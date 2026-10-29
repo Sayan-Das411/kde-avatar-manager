@@ -420,7 +420,7 @@ kdam/
 To remove `kdam` and its systemd timers:
 
 ```bash
-cd ~/path/to/kde-avatar-manager
+cd ~/path/to/kde-avatar-manager/
 bash uninstall.sh
 ```
 , or run:
