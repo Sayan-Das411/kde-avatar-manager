@@ -72,7 +72,7 @@ KDE Plasma reads user avatars managed by `AccountsService` via D-Bus (`/org/free
 ## Installation & Source Relocation
 
 ```bash
-cd ~/Projects/antigravity-manager/kde-avatar-manager
+cd ~/path/to/kde-avatar-manager/
 bash install.sh
 ```
 
@@ -420,11 +420,15 @@ kdam/
 To remove `kdam` and its systemd timers:
 
 ```bash
-cd ~/Projects/antigravity-manager/kde-avatar-manager
+cd ~/path/to/kde-avatar-manager
 bash uninstall.sh
 ```
+, or run:
+```bash
+kdam uninstall [--purge]
+```
 
-To also delete all image registry caches and configuration data:
+To also delete all image registry caches and configuration data, one can also do the following if --purge wasn't provided during uninstallation:
 ```bash
 rm -rf ~/.kde-avatar-manager
 ```
