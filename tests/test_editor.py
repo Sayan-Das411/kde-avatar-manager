@@ -9,17 +9,16 @@ Tests cover:
   - process_image() correctly produces a square output at AVATAR_SIZE
   - keyPressEvent accepts None gracefully (LSP fix test)
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
-from PIL import Image
-
 from helpers import _patch_paths
+from PIL import Image
 
 
 def _make_png(path: Path, size: tuple = (200, 150)) -> Path:
@@ -29,13 +28,14 @@ def _make_png(path: Path, size: tuple = (200, 150)) -> Path:
 
 # ── process_image ─────────────────────────────────────────────────────────────
 
+
 class TestProcessImage:
     """process_image() lives in rotator but is the bridge to the editor — test it here."""
 
     def test_output_is_square_at_avatar_size(self, tmp_path, monkeypatch):
         from kdam.config import AVATAR_SIZE
-        from kdam.rotator import process_image
         from kdam.db import CropInfo
+        from kdam.rotator import process_image
 
         img = _make_png(tmp_path / "src.png", size=(200, 200))
         monkeypatch.setattr("kdam.rotator.PROCESSED_DIR", tmp_path / "processed")
@@ -45,15 +45,16 @@ class TestProcessImage:
         result = process_image(str(img), crop)
         try:
             with Image.open(result) as out:
-                assert out.size == (AVATAR_SIZE, AVATAR_SIZE), \
+                assert out.size == (AVATAR_SIZE, AVATAR_SIZE), (
                     f"Expected {AVATAR_SIZE}×{AVATAR_SIZE}, got {out.size}"
+                )
                 assert out.mode == "RGBA"
         finally:
             result.unlink(missing_ok=True)
 
     def test_output_is_png(self, tmp_path, monkeypatch):
-        from kdam.rotator import process_image
         from kdam.db import CropInfo
+        from kdam.rotator import process_image
 
         img = _make_png(tmp_path / "src.png")
         monkeypatch.setattr("kdam.rotator.PROCESSED_DIR", tmp_path / "processed")
@@ -69,8 +70,8 @@ class TestProcessImage:
             result.unlink(missing_ok=True)
 
     def test_output_written_to_processed_dir(self, tmp_path, monkeypatch):
-        from kdam.rotator import process_image
         from kdam.db import CropInfo
+        from kdam.rotator import process_image
 
         proc_dir = tmp_path / "processed"
         proc_dir.mkdir()
@@ -86,8 +87,8 @@ class TestProcessImage:
 
     def test_crop_clamp_does_not_crash(self, tmp_path, monkeypatch):
         """Out-of-bounds crop coordinates must not raise — they should clamp."""
-        from kdam.rotator import process_image
         from kdam.db import CropInfo
+        from kdam.rotator import process_image
 
         proc_dir = tmp_path / "processed"
         proc_dir.mkdir()
@@ -104,9 +105,10 @@ class TestProcessImage:
 
     def test_file_handle_closed_after_process(self, tmp_path, monkeypatch):
         """No FD leak: PIL file handle must be closed after process_image."""
-        from kdam.rotator import process_image
-        from kdam.db import CropInfo
         import gc
+
+        from kdam.db import CropInfo
+        from kdam.rotator import process_image
 
         proc_dir = tmp_path / "processed"
         proc_dir.mkdir()
@@ -122,6 +124,7 @@ class TestProcessImage:
 
 
 # ── CropEditorWidget geometry ─────────────────────────────────────────────────
+
 
 class TestCropEditorGeometry:
     """Test the pure-Python clamping logic in CropEditorWidget without Qt display."""
@@ -175,6 +178,7 @@ class TestCropEditorGeometry:
 
 # ── open_crop_editor() — mocked Qt ────────────────────────────────────────────
 
+
 class TestOpenCropEditor:
     """Test open_crop_editor() return values with fully mocked Qt."""
 
@@ -200,7 +204,9 @@ class TestOpenCropEditor:
         with patch.dict(sys.modules, qt_mocks):
             # Re-import with mocked Qt
             import importlib
+
             import kdam.editor as ed
+
             importlib.reload(ed)
 
             # Patch CropEditorWindow: window._quit = True (user pressed Esc / close)
@@ -221,7 +227,9 @@ class TestOpenCropEditor:
 
         with patch.dict(sys.modules, qt_mocks):
             import importlib
+
             import kdam.editor as ed
+
             importlib.reload(ed)
 
             mock_window = MagicMock()
@@ -235,6 +243,7 @@ class TestOpenCropEditor:
 
 
 # ── keyPressEvent None safety ─────────────────────────────────────────────────
+
 
 class TestKeyPressEventNoneSafety:
     """Verify ImageCropWidget.keyPressEvent(None) does not raise (LSP fix)."""
@@ -261,6 +270,7 @@ class TestKeyPressEventNoneSafety:
     def test_none_guard_present_in_source(self):
         """Verify the None guard actually exists in the source file of editor.py."""
         import importlib.util
+
         spec = importlib.util.find_spec("kdam.editor")
         assert spec is not None and spec.origin is not None
         source = open(spec.origin).read()
@@ -272,6 +282,7 @@ class TestKeyPressEventNoneSafety:
 
 # ── Log format tests ──────────────────────────────────────────────────────────
 
+
 class TestLogFormat:
     """Verify the rotation log format contract used by _write_log_entry and _log_replace_path."""
 
@@ -279,7 +290,8 @@ class TestLogFormat:
         """_write_log_entry must write '{isoformat} | {path}' format."""
         _patch_paths(tmp_path, monkeypatch)
 
-        from kdam._cli_shared import _write_log_entry, LOG_LINE_SEP
+        from kdam._cli_shared import LOG_LINE_SEP, _write_log_entry
+
         _write_log_entry("/some/image.png")
 
         log = tmp_path / "logs" / "rotation.log"
@@ -289,6 +301,7 @@ class TestLogFormat:
         ts, path = line.split(LOG_LINE_SEP, 1)
         # Timestamp must be parseable ISO8601
         from datetime import datetime
+
         datetime.fromisoformat(ts)
         assert path == "/some/image.png"
 
@@ -296,7 +309,8 @@ class TestLogFormat:
         """_log_replace_path must correctly update entries written by _write_log_entry."""
         _patch_paths(tmp_path, monkeypatch)
 
-        from kdam._cli_shared import _write_log_entry, _log_replace_path
+        from kdam._cli_shared import _log_replace_path, _write_log_entry
+
         old = "/old/path/image.png"
         new = "/new/path/image.png"
 
@@ -311,7 +325,8 @@ class TestLogFormat:
         """Replacing /a/img.png must not corrupt /a/img.png.backup in same log."""
         _patch_paths(tmp_path, monkeypatch)
 
-        from kdam._cli_shared import _write_log_entry, _log_replace_path
+        from kdam._cli_shared import _log_replace_path, _write_log_entry
+
         _write_log_entry("/a/img.png")
         _write_log_entry("/a/img.png.backup")
 
@@ -330,22 +345,25 @@ class TestLogFormat:
     def test_error_notify_rate_limiter(self, tmp_path, monkeypatch):
         """_should_notify_error() must suppress notifications within 1-hour window."""
         import kdam.rotator as rot
+
         _patch_paths(tmp_path, monkeypatch)
         # Reset state
         monkeypatch.setattr(rot, "_last_error_notify_ts", None)
         monkeypatch.setattr(rot, "_disk_ts_loaded", False)
 
-        assert rot._should_notify_error() is True   # first call: sends
+        assert rot._should_notify_error() is True  # first call: sends
         assert rot._should_notify_error() is False  # immediate second: suppressed
 
         # Simulate 2 hours elapsed
         import time
+
         monkeypatch.setattr(rot, "_last_error_notify_ts", time.time() - 7201)
-        assert rot._should_notify_error() is True   # cooldown expired: sends again
+        assert rot._should_notify_error() is True  # cooldown expired: sends again
 
     def test_error_notify_disk_persistence(self, tmp_path, monkeypatch):
         """_should_notify_error() must persist and respect cooldown across process restarts."""
         import kdam.rotator as rot
+
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr(rot, "_last_error_notify_ts", None)
         monkeypatch.setattr(rot, "_disk_ts_loaded", False)

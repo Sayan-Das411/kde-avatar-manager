@@ -1,4 +1,5 @@
 """Click CLI — kdam root group and all leaf commands."""
+
 from __future__ import annotations
 
 import os
@@ -55,6 +56,7 @@ from .editor import EDITOR_QUIT
 
 # ── Root group ────────────────────────────────────────────────────────────────
 
+
 @click.group(context_settings={"max_content_width": 120})
 @click.version_option(package_name="kde-avatar-manager")
 def cli() -> None:
@@ -68,6 +70,7 @@ def cli() -> None:
 
 
 # ── help (rich) ───────────────────────────────────────────────────────────────
+
 
 @cli.command(name="help")
 @click.argument("command_name", nargs=-1, required=False, shell_complete=_complete_command_name)
@@ -93,7 +96,11 @@ def help_cmd(command_name: tuple) -> None:
                 return
             child = cmd_obj.get_command(None, part)
             if child is None:
-                console.print(f"[red]Unknown command: '{' '.join(list(command_name)[:list(command_name).index(part)+1])}'[/red]")
+                console.print(
+                    "[red]Unknown command: '"
+                    + " ".join(list(command_name)[: list(command_name).index(part) + 1])
+                    + "'[/red]"
+                )
                 valid = sorted(cmd_obj.list_commands(None)) if hasattr(cmd_obj, "list_commands") else []
                 if valid:
                     console.print(f"[dim]Valid: {', '.join(valid)}[/dim]")
@@ -103,7 +110,6 @@ def help_cmd(command_name: tuple) -> None:
         ctx = click.Context(cmd_obj, info_name=f"kdam {' '.join(command_name)}")
         click.echo(cmd_obj.get_help(ctx))
         return
-
 
     def _section(title: str, rows: list[tuple]) -> Panel:
         t = Table(
@@ -119,125 +125,182 @@ def help_cmd(command_name: tuple) -> None:
             t.add_row(Text(f"kdam {cmd}"), Text(desc))
         return Panel(t, title=f"[bold magenta]{title}[/bold magenta]", border_style="dim")
 
-
     console.print()
-    console.print(Panel(
-        Text.from_markup(
-            "[bold white]KDAM[/bold white] — [cyan]KDE Avatar Manager[/cyan]\n\n"
-            "Auto-rotate your KDE Plasma user avatar.\n"
-            "Data dir: [dim]~/.kde-avatar-manager/[/dim]"
-        ),
-        border_style="magenta",
-        padding=(1, 2),
-    ))
-    console.print()
-
-    console.print(_section("Image Management", [
-        ("scan",                      "Scan dirs; register new images, report stale"),
-        ("list [-p]",                 "List all images with status (-p: full paths)"),
-        ("add <paths...>",            "Add image(s) + open crop editor"),
-        ("add <paths...> --no-editor","Register image(s) without opening crop editor"),
-        ("remove <paths...>",         "Remove image(s) from registry"),
-        ("remove --stale",            "Remove all missing/stale images from registry"),
-        ("remove --all-unconfigured", "Remove all images that were never configured"),
-        ("remove <path> --delete-file", "Remove + delete source file from disk"),
-        ("edit <path>",               "Re-open crop editor for an image"),
-        ("rename <old> <new>",        "Rename image file + migrate crop settings"),
-        ("configure [paths...]",      "Open crop editor for specific image(s)"),
-        ("configure-all",             "Open crop editor for every unconfigured image (skips panic image)"),
-        ("unconfigure <paths...>",    "Reset crop config for image(s) (back to unconfigured)"),
-        ("enable-image <path>",       "Re-enable a disabled image"),
-        ("disable-image <path>",      "Disable image from rotation (keep in registry)"),
-        ("weight <path> <n>",         "Set selection weight (for weighted-random order)"),
-        ("set <path>",                "Apply a specific image immediately"),
-    ]))
+    console.print(
+        Panel(
+            Text.from_markup(
+                "[bold white]KDAM[/bold white] — [cyan]KDE Avatar Manager[/cyan]\n\n"
+                "Auto-rotate your KDE Plasma user avatar.\n"
+                "Data dir: [dim]~/.kde-avatar-manager/[/dim]"
+            ),
+            border_style="magenta",
+            padding=(1, 2),
+        )
+    )
     console.print()
 
-    console.print(_section("Rotation & Freeze", [
-        ("next [-c N] [--dry-run]",    "Rotate immediately; -c N skips ahead N; --dry-run previews"),
-        ("status",                     "Show full manager status (incl. next trigger time)"),
-        ("log [-n N] [--all] [--desc] [--prune N]", "Rotation history past→present; --prune truncates the log"),
-        ("freeze [dur] [-i <path>]",   "Freeze avatar indefinitely or for duration (e.g. 3d, 1w)"),
-        ("unfreeze [-r]",              "Unfreeze avatar and resume auto-rotation"),
-        ("enable",                     "Install + start systemd timer"),
-        ("disable",                    "Stop + disable timer"),
-        ("toggle",                     "Flip ON↔OFF or unfreeze — bind to a hotkey"),
-    ]))
+    console.print(
+        _section(
+            "Image Management",
+            [
+                ("scan", "Scan dirs; register new images, report stale"),
+                ("list [-p]", "List all images with status (-p: full paths)"),
+                ("add <paths...>", "Add image(s) + open crop editor"),
+                ("add <paths...> --no-editor", "Register image(s) without opening crop editor"),
+                ("remove <paths...>", "Remove image(s) from registry"),
+                ("remove --stale", "Remove all missing/stale images from registry"),
+                ("remove --all-unconfigured", "Remove all images that were never configured"),
+                ("remove <path> --delete-file", "Remove + delete source file from disk"),
+                ("edit <path>", "Re-open crop editor for an image"),
+                ("rename <old> <new>", "Rename image file + migrate crop settings"),
+                ("configure [paths...]", "Open crop editor for specific image(s)"),
+                ("configure-all", "Open crop editor for every unconfigured image (skips panic image)"),
+                ("unconfigure <paths...>", "Reset crop config for image(s) (back to unconfigured)"),
+                ("enable-image <path>", "Re-enable a disabled image"),
+                ("disable-image <path>", "Disable image from rotation (keep in registry)"),
+                ("weight <path> <n>", "Set selection weight (for weighted-random order)"),
+                ("set <path>", "Apply a specific image immediately"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Schedule Config", [
-        ("config set rotation.mode <mode>",        "daily | interval | times | weekly | monthly"),
-        ("config set rotation.interval 6h",        "Interval: e.g. 6h, 45m, 12d 13h 52m (auto-reloads timer)"),
-        ("config set rotation.start_hour 0",       "Anchor hour 0-23 for clock-aligned intervals (00:00, 06:00...)"),
-        ("config set rotation.times '08:30, 14:00'", "Specific clock times in a day for 'times' mode"),
-        ("config set rotation.weekday sun",        "Day of week for 'weekly' mode (mon..sun)"),
-        ("config set rotation.order <order>",      "random | sequential | weighted | lru | deck"),
-        ("config set rotation.lru_pool_size <K>",  "default (dynamic 10-50, 15%) | custom integer K"),
-        ("config show",                            "Print full config as JSON"),
-    ]))
+    console.print(
+        _section(
+            "Rotation & Freeze",
+            [
+                ("next [-c N] [--dry-run]", "Rotate immediately; -c N skips ahead N; --dry-run previews"),
+                ("status", "Show full manager status (incl. next trigger time)"),
+                (
+                    "log [-n N] [--all] [--desc] [--prune N]",
+                    "Rotation history past→present; --prune truncates the log",
+                ),
+                ("freeze [dur] [-i <path>]", "Freeze avatar indefinitely or for duration (e.g. 3d, 1w)"),
+                ("unfreeze [-r]", "Unfreeze avatar and resume auto-rotation"),
+                ("enable", "Install + start systemd timer"),
+                ("disable", "Stop + disable timer"),
+                ("toggle", "Flip ON↔OFF or unfreeze — bind to a hotkey"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Panic / Default Avatar", [
-        ("panic reset",                     "Revert to panic image + disable auto-rotation"),
-        ("panic set <path> [--no-editor]",  "Set panic image + crop (--no-editor: skip crop)"),
-        ("panic set --current",             "Snapshot and set current KDE avatar as panic"),
-        ("panic edit",                      "Edit crop for panic image (also re-syncs backup.png)"),
-        ("panic snapshot",                  "Snapshot active KDE avatar to backup.png"),
-        ("panic show",                      "Show configured panic image and backup info"),
-    ]))
+    console.print(
+        _section(
+            "Schedule Config",
+            [
+                ("config set rotation.mode <mode>", "daily | interval | times | weekly | monthly"),
+                (
+                    "config set rotation.interval 6h",
+                    "Interval: e.g. 6h, 45m, 12d 13h 52m (auto-reloads timer)",
+                ),
+                (
+                    "config set rotation.start_hour 0",
+                    "Anchor hour 0-23 for clock-aligned intervals (00:00, 06:00...)",
+                ),
+                (
+                    "config set rotation.times '08:30, 14:00'",
+                    "Specific clock times in a day for 'times' mode",
+                ),
+                ("config set rotation.weekday sun", "Day of week for 'weekly' mode (mon..sun)"),
+                ("config set rotation.order <order>", "random | sequential | weighted | lru | deck"),
+                ("config set rotation.lru_pool_size <K>", "default (dynamic 10-50, 15%) | custom integer K"),
+                ("config show", "Print full config as JSON"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Directories", [
-        ("dirs list",                         "Show configured directories"),
-        ("dirs add <path>",                   "Add a directory (non-recursive)"),
-        ("dirs add <path> -r",                "Add a directory (recursive)"),
-        ("dirs remove <path>",                "Remove a directory from config"),
-        ("dirs toggle <path>",                "Enable / disable directory scanning only"),
-        ("dirs suspend <path>",               "Suspend dir + pause all its registered images"),
-        ("dirs resume <path>",                "Resume suspended dir + restore its paused images"),
-        ("dirs edit <path>",                  "Show current settings for a directory"),
-        ("dirs edit <path> --recursive",      "Enable recursive scanning"),
-        ("dirs edit <path> --no-recursive",   "Disable recursive scanning"),
-    ]))
+    console.print(
+        _section(
+            "Panic / Default Avatar",
+            [
+                ("panic reset", "Revert to panic image + disable auto-rotation"),
+                ("panic set <path> [--no-editor]", "Set panic image + crop (--no-editor: skip crop)"),
+                ("panic set --current", "Snapshot and set current KDE avatar as panic"),
+                ("panic edit", "Edit crop for panic image (also re-syncs backup.png)"),
+                ("panic snapshot", "Snapshot active KDE avatar to backup.png"),
+                ("panic show", "Show configured panic image and backup info"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Maintenance", [
-        ("resync",              "Relink registry entries after moving files in a file manager"),
-    ]))
+    console.print(
+        _section(
+            "Directories",
+            [
+                ("dirs list", "Show configured directories"),
+                ("dirs add <path>", "Add a directory (non-recursive)"),
+                ("dirs add <path> -r", "Add a directory (recursive)"),
+                ("dirs remove <path>", "Remove a directory from config"),
+                ("dirs toggle <path>", "Enable / disable directory scanning only"),
+                ("dirs suspend <path>", "Suspend dir + pause all its registered images"),
+                ("dirs resume <path>", "Resume suspended dir + restore its paused images"),
+                ("dirs edit <path>", "Show current settings for a directory"),
+                ("dirs edit <path> --recursive", "Enable recursive scanning"),
+                ("dirs edit <path> --no-recursive", "Disable recursive scanning"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Backup & Migration", [
-        ("backup create [out]",               "Create portable full backup (.tar.gz)"),
-        ("backup create --no-images",         "Backup settings & crop metadata only"),
-        ("backup create --config-only",       "Backup schedule & settings only"),
-        ("backup info <file>",                "Show details of a backup archive"),
-        ("backup restore <file> [-f]",        "Restore config, metadata & images (-f: force)"),
-        ("backup restore <file> -d <dir>",    "Restore and extract images to custom dir"),
-    ]))
+    console.print(
+        _section(
+            "Maintenance",
+            [
+                ("resync", "Relink registry entries after moving files in a file manager"),
+            ],
+        )
+    )
     console.print()
 
-    console.print(_section("Lifecycle & Uninstall", [
-        ("help [command]",                     "Full reference, or help for a specific command"),
-        ("completion [--shell bash|zsh|fish]", "Show shell Tab-completion setup instructions"),
-        ("uninstall [--purge] [-y]",           "Stop timers and remove kdam (-y: skip prompt)"),
-    ]))
+    console.print(
+        _section(
+            "Backup & Migration",
+            [
+                ("backup create [out]", "Create portable full backup (.tar.gz)"),
+                ("backup create --no-images", "Backup settings & crop metadata only"),
+                ("backup create --config-only", "Backup schedule & settings only"),
+                ("backup info <file>", "Show details of a backup archive"),
+                ("backup restore <file> [-f]", "Restore config, metadata & images (-f: force)"),
+                ("backup restore <file> -d <dir>", "Restore and extract images to custom dir"),
+            ],
+        )
+    )
     console.print()
 
-
+    console.print(
+        _section(
+            "Lifecycle & Uninstall",
+            [
+                ("help [command]", "Full reference, or help for a specific command"),
+                ("completion [--shell bash|zsh|fish]", "Show shell Tab-completion setup instructions"),
+                ("uninstall [--purge] [-y]", "Stop timers and remove kdam (-y: skip prompt)"),
+            ],
+        )
+    )
+    console.print()
 
     # Status icon legend
     legend = Table(box=box.SIMPLE_HEAD, header_style="bold cyan", border_style="dim", padding=(0, 2))
     legend.add_column("Icon", style="bold", width=4, justify="center")
     legend.add_column("Meaning")
     for icon, meaning in [
-        ("[green]✓[/green]",     "Active — configured and in the rotation pool"),
-        ("[dim]○[/dim]",         "Disabled — configured but excluded from rotation"),
-        ("[yellow]✗[/yellow]",   "Unconfigured — registered but no crop set yet"),
-        ("[red]⚠[/red]",        "Missing — source file deleted from disk"),
+        ("[green]✓[/green]", "Active — configured and in the rotation pool"),
+        ("[dim]○[/dim]", "Disabled — configured but excluded from rotation"),
+        ("[yellow]✗[/yellow]", "Unconfigured — registered but no crop set yet"),
+        ("[red]⚠[/red]", "Missing — source file deleted from disk"),
         ("[magenta]P[/magenta]", "Panic — reserved as safe fallback, excluded from rotation"),
     ]:
         legend.add_row(icon, meaning)
-    console.print(Panel(legend, title="[bold magenta]Status Icons (kdam list / kdam log)[/bold magenta]", border_style="dim"))
+    console.print(
+        Panel(
+            legend,
+            title="[bold magenta]Status Icons (kdam list / kdam log)[/bold magenta]",
+            border_style="dim",
+        )
+    )
     console.print()
 
     # Crop editor controls
@@ -245,31 +308,35 @@ def help_cmd(command_name: tuple) -> None:
     ctrl.add_column("Action", style="bold green", min_width=25)
     ctrl.add_column("Effect")
     for action, effect in [
-        ("Drag inside square",    "Move crop region"),
-        ("Drag ◼ bottom-right",   "Resize crop square"),
-        ("Scroll wheel",          "Resize (±5%)"),
-        ("Arrow keys",            "Nudge 1 px"),
-        ("Shift + Arrow keys",    "Nudge 10 px"),
-        ("+ / −",                 "Resize"),
-        ("Enter / Return",        "Save crop"),
-        ("Esc",                   "Skip image"),
+        ("Drag inside square", "Move crop region"),
+        ("Drag ◼ bottom-right", "Resize crop square"),
+        ("Scroll wheel", "Resize (±5%)"),
+        ("Arrow keys", "Nudge 1 px"),
+        ("Shift + Arrow keys", "Nudge 10 px"),
+        ("+ / −", "Resize"),
+        ("Enter / Return", "Save crop"),
+        ("Esc", "Skip image"),
     ]:
         ctrl.add_row(action, effect)
     console.print(Panel(ctrl, title="[bold magenta]Crop Editor Controls[/bold magenta]", border_style="dim"))
 
     console.print()
-    console.print(Panel(
-        "[dim]Tip:[/dim] Bind [bold green]kdam toggle[/bold green] to a keyboard shortcut in\n"
-        "[dim]System Settings → Shortcuts → Custom Shortcuts[/dim]\n"
-        "[dim]Tip:[/dim] [bold green]kdam help <command>[/bold green] shows detailed help for any command\n"
-        "[dim]       e.g.  kdam help rename   |   kdam help panic set   |   kdam help dirs[/dim]",
-        border_style="dim",
-        padding=(0, 2),
-    ))
+    console.print(
+        Panel(
+            "[dim]Tip:[/dim] Bind [bold green]kdam toggle[/bold green] to a keyboard shortcut in\n"
+            "[dim]System Settings → Shortcuts → Custom Shortcuts[/dim]\n"
+            "[dim]Tip:[/dim] [bold green]kdam help <command>[/bold green]"
+            " shows detailed help for any command\n"
+            "[dim]       e.g.  kdam help rename   |   kdam help panic set   |   kdam help dirs[/dim]",
+            border_style="dim",
+            padding=(0, 2),
+        )
+    )
     console.print()
 
 
 # ── scan ──────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 def scan() -> None:
@@ -294,7 +361,7 @@ def scan() -> None:
 
     panic_path_r = str(Path(config.panic.path).resolve()) if config.panic.path else None
     new_normal = [p for p in new_imgs if panic_path_r is None or str(Path(p).resolve()) != panic_path_r]
-    new_panic  = [p for p in new_imgs if panic_path_r and str(Path(p).resolve()) == panic_path_r]
+    new_panic = [p for p in new_imgs if panic_path_r and str(Path(p).resolve()) == panic_path_r]
 
     if new_imgs:
         console.print(f"[green]✓ {len(new_imgs)} new image(s) found:[/green]")
@@ -315,6 +382,7 @@ def scan() -> None:
 
 
 # ── list ──────────────────────────────────────────────────────────────────────
+
 
 @cli.command(name="list")
 @click.option("-p", "--paths", is_flag=True, help="Always show full directory paths.")
@@ -352,7 +420,9 @@ def list_cmd(paths: bool) -> None:
     all_imgs = db.all()
 
     if not all_imgs:
-        console.print("[dim]No images registered. Run [bold]kdam scan[/bold] or [bold]kdam add <path>[/bold].[/dim]")
+        console.print(
+            "[dim]No images registered. Run [bold]kdam scan[/bold] or [bold]kdam add <path>[/bold].[/dim]"
+        )
         return
 
     panic_path_r = str(Path(config.panic.path).resolve()) if config.panic.path else None
@@ -382,7 +452,7 @@ def list_cmd(paths: bool) -> None:
         is_current = bool(current_path_r and str(p_obj.resolve()) == current_path_r)
 
         if is_panic:
-            icon, name_style = "P", "magenta"   # panic image — not in rotation pool
+            icon, name_style = "P", "magenta"  # panic image — not in rotation pool
         elif not exists:
             icon, name_style = "⚠", "red"
         elif not entry.configured:
@@ -452,14 +522,14 @@ def list_cmd(paths: bool) -> None:
 
     # Counts: panic image is neither "active" nor "unconfigured" — it's its own category
     active_n = sum(
-        1 for p, e in all_imgs.items()
-        if e.configured and e.enabled
-        and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
+        1
+        for p, e in all_imgs.items()
+        if e.configured and e.enabled and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
     )
     uncfg_n = sum(
-        1 for p, e in all_imgs.items()
-        if not e.configured
-        and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
+        1
+        for p, e in all_imgs.items()
+        if not e.configured and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
     )
     panic_n = 1 if (panic_path_r and panic_path_r in {str(Path(p).resolve()) for p in all_imgs}) else 0
     stale_n = sum(1 for p in all_imgs if not Path(p).exists())
@@ -478,8 +548,8 @@ def list_cmd(paths: bool) -> None:
     console.print(summary)
 
 
-
 # ── add ───────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("paths", nargs=-1, required=True, type=click.Path(exists=True, path_type=Path))
@@ -528,12 +598,17 @@ def add(paths: tuple[Path, ...], no_editor: bool) -> None:
 
 # ── remove ────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("paths", nargs=-1, required=False, shell_complete=_complete_image_name)
 @click.option("--stale", is_flag=True, help="Remove all stale/missing images from registry.")
 @click.option("--delete-file", is_flag=True, help="Also delete the source image from disk")
-@click.option("--all-unconfigured", "all_uncfg", is_flag=True,
-              help="Remove all images that have never been configured (crop not set).")
+@click.option(
+    "--all-unconfigured",
+    "all_uncfg",
+    is_flag=True,
+    help="Remove all images that have never been configured (crop not set).",
+)
 def remove(paths: tuple[str, ...], stale: bool, delete_file: bool, all_uncfg: bool) -> None:
     """Remove image(s) from the avatar registry and optionally delete from disk.
 
@@ -593,18 +668,27 @@ def remove(paths: tuple[str, ...], stale: bool, delete_file: bool, all_uncfg: bo
                     src = Path(p)
                     if src.exists():
                         src.unlink()
-                        console.print(f"[green]✓ Removed from registry and deleted from disk:[/green] {src.name}")
+                        console.print(
+                            f"[green]✓ Removed from registry and deleted from disk:[/green] {src.name}"
+                        )
                     else:
-                        console.print(f"[green]✓ Removed from registry:[/green] {Path(p).name} [dim](file already missing)[/dim]")
+                        console.print(
+                            f"[green]✓ Removed from registry:[/green] {Path(p).name}"
+                            " [dim](file already missing)[/dim]"
+                        )
                 except OSError as exc:
-                    console.print(f"[yellow]✓ Removed from registry, but could not delete file: {exc}[/yellow]")
+                    console.print(
+                        f"[yellow]✓ Removed from registry, but could not delete file: {exc}[/yellow]"
+                    )
             else:
                 console.print(f"[green]✓ Removed:[/green] {Path(p).name}")
         db.save()
         return
 
     if not paths:
-        console.print("[yellow]Provide image path(s) to remove, or use --stale to clean missing files.[/yellow]")
+        console.print(
+            "[yellow]Provide image path(s) to remove, or use --stale to clean missing files.[/yellow]"
+        )
         console.print("[dim]Example: kdam remove photo1.jpg photo2.jpg[/dim]")
         console.print("[dim]Example: kdam remove --stale[/dim]")
         return
@@ -620,7 +704,9 @@ def remove(paths: tuple[str, ...], stale: bool, delete_file: bool, all_uncfg: bo
 
         if delete_file and Path(abs_path).exists():
             Path(abs_path).unlink()
-            console.print(f"[green]✓ Removed from registry and deleted from disk: {Path(abs_path).name}[/green]")
+            console.print(
+                f"[green]✓ Removed from registry and deleted from disk: {Path(abs_path).name}[/green]"
+            )
         else:
             console.print(f"[green]✓ Removed from registry: {Path(abs_path).name}[/green]")
 
@@ -628,6 +714,7 @@ def remove(paths: tuple[str, ...], stale: bool, delete_file: bool, all_uncfg: bo
 
 
 # ── unconfigure ───────────────────────────────────────────────────────────────
+
 
 @cli.command(name="unconfigure")
 @click.argument("paths", nargs=-1, required=True, shell_complete=_complete_image_name)
@@ -661,6 +748,7 @@ def unconfigure(paths: tuple[str, ...]) -> None:
 
 
 # ── rename ────────────────────────────────────────────────────────────────────
+
 
 @cli.command(name="rename")
 @click.argument("old_path", shell_complete=_complete_image_name)
@@ -763,6 +851,7 @@ def rename_cmd(old_path: str, new_name: str) -> None:
 
 # ── edit ──────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("path", shell_complete=_complete_image_name)
 def edit(path: str) -> None:
@@ -810,6 +899,7 @@ def edit(path: str) -> None:
 
 # ── configure ─────────────────────────────────────────────────────────────────
 
+
 @cli.command(name="configure")
 @click.argument("paths", nargs=-1, required=False, shell_complete=_complete_image_name)
 def configure(paths: tuple[str, ...]) -> None:
@@ -854,7 +944,8 @@ def configure(paths: tuple[str, ...]) -> None:
         config = load_config()
         panic_path_r = str(Path(config.panic.path).resolve()) if config.panic.path else None
         pending = [
-            (p, e) for p, e in db.unconfigured().items()
+            (p, e)
+            for p, e in db.unconfigured().items()
             if Path(p).exists() and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
         ]
         if not pending:
@@ -870,6 +961,7 @@ def configure(paths: tuple[str, ...]) -> None:
 
 
 # ── configure-all ─────────────────────────────────────────────────────────────
+
 
 @cli.command(name="configure-all")
 def configure_all() -> None:
@@ -890,7 +982,8 @@ def configure_all() -> None:
     config = load_config()
     panic_path_r = str(Path(config.panic.path).resolve()) if config.panic.path else None
     pending = [
-        (p, e) for p, e in db.unconfigured().items()
+        (p, e)
+        for p, e in db.unconfigured().items()
         if Path(p).exists() and (panic_path_r is None or str(Path(p).resolve()) != panic_path_r)
     ]
 
@@ -927,6 +1020,7 @@ def _ensure_image_configured(path: str, db: ImageDB) -> bool:
     entry = db.get(path)
     if not entry or not entry.configured:
         from .editor import open_crop_editor
+
         console.print("[cyan]Image not configured — opening crop editor …[/cyan]")
         crop = open_crop_editor(path, entry.crop.__dict__ if (entry and entry.crop) else None)
         if not isinstance(crop, dict):
@@ -942,6 +1036,7 @@ def _ensure_image_configured(path: str, db: ImageDB) -> bool:
 
 
 # ── set ───────────────────────────────────────────────────────────────────────
+
 
 @cli.command(name="set")
 @click.argument("path", shell_complete=_complete_image_name)
@@ -978,9 +1073,12 @@ def set_cmd(path: str) -> None:
 
 # ── freeze & unfreeze ─────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("duration", required=False, default=None)
-@click.option("--image", "-i", help="Specific image to apply and freeze on.", shell_complete=_complete_image_name)
+@click.option(
+    "--image", "-i", help="Specific image to apply and freeze on.", shell_complete=_complete_image_name
+)
 def freeze(duration: str | None, image: str | None) -> None:
     """Freeze the avatar — stop auto-rotation indefinitely or for a set time.
 
@@ -1017,7 +1115,6 @@ def freeze(duration: str | None, image: str | None) -> None:
         if not ok:
             console.print("[red]Failed to apply image.[/red]")
             return
-
 
     until_dt: datetime | None = None
     if duration:
@@ -1081,12 +1178,17 @@ def unfreeze(rotate: bool) -> None:
 
 # ── next ──────────────────────────────────────────────────────────────────────
 
+
 @cli.command(name="next")
 @click.option("--quiet", is_flag=True, help="Suppress output (used by systemd).")
-@click.option("--count", "-c", default=1, show_default=True,
-              help="Rotate N times in a row (useful to skip ahead several images).")
-@click.option("--dry-run", is_flag=True,
-              help="Show which image would be selected next without applying it.")
+@click.option(
+    "--count",
+    "-c",
+    default=1,
+    show_default=True,
+    help="Rotate N times in a row (useful to skip ahead several images).",
+)
+@click.option("--dry-run", is_flag=True, help="Show which image would be selected next without applying it.")
 def next_cmd(quiet: bool, count: int, dry_run: bool) -> None:
     """Rotate to the next avatar immediately.
 
@@ -1156,7 +1258,9 @@ def next_cmd(quiet: bool, count: int, dry_run: bool) -> None:
 
     if not quiet:
         if pool_empty and rotated == 0:
-            console.print("[yellow]No configured images available for rotation. Run [bold]kdam list[/bold].[/yellow]")
+            console.print(
+                "[yellow]No configured images available for rotation. Run [bold]kdam list[/bold].[/yellow]"
+            )
         elif rotated == 0:
             pass  # error already printed/notified by rotate()
         elif count == 1:
@@ -1166,6 +1270,7 @@ def next_cmd(quiet: bool, count: int, dry_run: bool) -> None:
 
 
 # ── status ────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 def status() -> None:
@@ -1182,16 +1287,18 @@ def status() -> None:
 
     panic_path = str(Path(config.panic.path).resolve()) if config.panic.path else None
     active_rotation_pool = [
-        p for p, e in all_imgs.items()
+        p
+        for p, e in all_imgs.items()
         if e.configured and e.enabled and (panic_path is None or str(Path(p).resolve()) != panic_path)
     ]
     active_n = len(active_rotation_pool)
-    uncfg_n  = sum(
-        1 for p, e in all_imgs.items()
+    uncfg_n = sum(
+        1
+        for p, e in all_imgs.items()
         if not e.configured and (panic_path is None or str(Path(p).resolve()) != panic_path)
     )
     timer_on = _timer_active()
-    rot_on   = config.state.enabled
+    rot_on = config.state.enabled
 
     console.print("\n[bold]KDAM — Avatar Manager Status[/bold]")
     console.print(f"  Rotation  : {'[green]ON[/green]' if rot_on else '[red]OFF[/red]'}")
@@ -1225,21 +1332,33 @@ def status() -> None:
     order_val = config.rotation.order
     if order_val in ("lru", "least-recent"):
         from .rotator import _get_lru_pool_size
+
         k = _get_lru_pool_size(active_n, config)
-        pool_type = f"custom={config.rotation.lru_pool_size}" if config.rotation.lru_pool_size != "default" else "default"
+        pool_type = (
+            f"custom={config.rotation.lru_pool_size}"
+            if config.rotation.lru_pool_size != "default"
+            else "default"
+        )
         console.print(f"  Order     : lru (Least Recently Used, pool: {k}/{active_n} images, {pool_type})")
     elif order_val in ("deck", "shuffle-bag"):
-        deck_remaining = len([p for p in config.state.deck if p in all_imgs and all_imgs[p].enabled and all_imgs[p].configured])
-        console.print(f"  Order     : deck (Shuffle-bag cycle: {deck_remaining}/{active_n} remaining before reshuffle)")
+        deck_remaining = len(
+            [p for p in config.state.deck if p in all_imgs and all_imgs[p].enabled and all_imgs[p].configured]
+        )
+        console.print(
+            f"  Order     : deck (Shuffle-bag cycle: {deck_remaining}/{active_n} remaining before reshuffle)"
+        )
     else:
         console.print(f"  Order     : {order_val}")
 
     from ._cli_shared import _build_timer_directives
+
     _, schedule_desc = _build_timer_directives(config)
     console.print(f"  Schedule  : {schedule_desc}")
 
-    console.print(f"  Images    : [green]{active_n} active for rotation[/green] / {len(all_imgs)} total"
-                  + (f" [yellow]({uncfg_n} unconfigured)[/yellow]" if uncfg_n else ""))
+    console.print(
+        f"  Images    : [green]{active_n} active for rotation[/green] / {len(all_imgs)} total"
+        + (f" [yellow]({uncfg_n} unconfigured)[/yellow]" if uncfg_n else "")
+    )
 
     suspended_n = sum(1 for e in all_imgs.values() if e.suspended_by_dir)
     if suspended_n:
@@ -1264,15 +1383,19 @@ def status() -> None:
         return False
 
     orphaned_n = sum(
-        1 for p in all_imgs
-        if (panic_path is None or str(Path(p).resolve()) != panic_path)
-        and not _is_under_configured_dir(p)
+        1
+        for p in all_imgs
+        if (panic_path is None or str(Path(p).resolve()) != panic_path) and not _is_under_configured_dir(p)
     )
     if orphaned_n:
-        console.print(f"  Orphaned  : [yellow]{orphaned_n} image(s) not under any configured directory[/yellow]")
+        console.print(
+            f"  Orphaned  : [yellow]{orphaned_n} image(s) not under any configured directory[/yellow]"
+        )
         console.print("             [dim](run 'kdam dirs add <dir>' or 'kdam remove --stale')[/dim]")
 
-    current_display = Path(config.state.last_image_path).name if config.state.last_image_path else "[dim]unknown[/dim]"
+    current_display = (
+        Path(config.state.last_image_path).name if config.state.last_image_path else "[dim]unknown[/dim]"
+    )
     actual_avatar = kde.get_current_avatar()
     if actual_avatar:
         try:
@@ -1286,9 +1409,11 @@ def status() -> None:
             elif panic_p and actual_p == panic_p:
                 console.print(f"  Current   : {panic_p.name} [dim](panic image active)[/dim]")
             elif actual_p == backup_p:
-                console.print(f"  Current   : backup.png [dim](fallback snapshot active)[/dim]")
+                console.print("  Current   : backup.png [dim](fallback snapshot active)[/dim]")
             else:
-                console.print(f"  Current   : {current_display} [dim](AccountsService: {actual_p.name})[/dim]")
+                console.print(
+                    f"  Current   : {current_display} [dim](AccountsService: {actual_p.name})[/dim]"
+                )
         except Exception:
             console.print(f"  Current   : {current_display}")
     else:
@@ -1301,9 +1426,15 @@ def status() -> None:
     if timer_on:
         try:
             result = subprocess.run(
-                ["systemctl", "--user", "show", f"{SERVICE_NAME}.timer",
-                 "--property=NextElapseUSecRealtime,NextElapseUSecMonotonic"],
-                capture_output=True, text=True
+                [
+                    "systemctl",
+                    "--user",
+                    "show",
+                    f"{SERVICE_NAME}.timer",
+                    "--property=NextElapseUSecRealtime,NextElapseUSecMonotonic",
+                ],
+                capture_output=True,
+                text=True,
             )
             props = dict(line.split("=", 1) for line in result.stdout.strip().splitlines() if "=" in line)
             raw_rt = props.get("NextElapseUSecRealtime", "").strip()
@@ -1323,11 +1454,14 @@ def status() -> None:
                     h, rem = divmod(total_s, 3600)
                     m = rem // 60
                     left_str = f"{h}h {m}m" if h else f"{m}m"
-                    console.print(f"  Next run  : {next_dt.strftime('%Y-%m-%d %H:%M:%S')}  [dim](in {left_str})[/dim]")
+                    console.print(
+                        f"  Next run  : {next_dt.strftime('%Y-%m-%d %H:%M:%S')}  [dim](in {left_str})[/dim]"
+                    )
             else:
                 raw_mono = props.get("NextElapseUSecMonotonic", "").strip()
                 if raw_mono and raw_mono != "0":
                     import time
+
                     now_mono_usec = int(time.clock_gettime(time.CLOCK_MONOTONIC) * 1_000_000)
                     target_mono_usec = int(raw_mono)
                     diff_sec = (target_mono_usec - now_mono_usec) / 1_000_000
@@ -1336,25 +1470,37 @@ def status() -> None:
                         h, rem = divmod(int(diff_sec), 3600)
                         m = rem // 60
                         left_str = f"{h}h {m}m" if h else f"{m}m"
-                        console.print(f"  Next run  : {next_dt.strftime('%Y-%m-%d %H:%M:%S')}  [dim](in {left_str})[/dim]")
+                        console.print(
+                            f"  Next run  : {next_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+                            f"  [dim](in {left_str})[/dim]"
+                        )
         except Exception:
             pass
 
     panic_src = config.panic.path or f"{BACKUP_FILE} (auto-snapshot)"
     panic_exists = Path(config.panic.path).exists() if config.panic.path else BACKUP_FILE.exists()
     crop_info = " [custom crop]" if config.panic.crop else ""
-    console.print(f"  Panic img : {panic_src}{crop_info} [{'[green]✓[/green]' if panic_exists else '[red]missing[/red]'}]")
+    console.print(
+        f"  Panic img : {panic_src}{crop_info}"
+        f" [{'[green]✓[/green]' if panic_exists else '[red]missing[/red]'}]"
+    )
     console.print()
 
 
 # ── log ───────────────────────────────────────────────────────────────────────
 
+
 @cli.command(name="log")
 @click.option("-n", "count", default=20, show_default=True, help="Number of entries to show.")
 @click.option("--all", "show_all", is_flag=True, help="Show all entries.")
 @click.option("--desc", is_flag=True, help="Show newest first (default: oldest first, past→present).")
-@click.option("--prune", "prune_n", default=None, type=int,
-              help="Truncate log to the most recent N entries and exit (no table shown).")
+@click.option(
+    "--prune",
+    "prune_n",
+    default=None,
+    type=int,
+    help="Truncate log to the most recent N entries and exit (no table shown).",
+)
 def log_cmd(count: int, show_all: bool, desc: bool, prune_n: int | None) -> None:
     """Show rotation history, oldest-first (past → present).
 
@@ -1380,7 +1526,9 @@ def log_cmd(count: int, show_all: bool, desc: bool, prune_n: int | None) -> None
         kept = lines[-prune_n:]
         removed = len(lines) - len(kept)
         if removed <= 0:
-            console.print(f"[dim]Log has {len(lines)} entries — nothing to prune (already ≤ {prune_n}).[/dim]")
+            console.print(
+                f"[dim]Log has {len(lines)} entries — nothing to prune (already ≤ {prune_n}).[/dim]"
+            )
             return
         with _db_lock():
             LOG_FILE.write_text("\n".join(kept) + "\n")
@@ -1425,8 +1573,8 @@ def log_cmd(count: int, show_all: bool, desc: bool, prune_n: int | None) -> None
             p_resolved = str(p.resolve()) if p.is_absolute() else None
             if p_resolved == current_path:
                 if desc and current_display_idx is not None:
-                    break   # already found the most-recent in newest-first order
-                current_display_idx = i   # keep updating — last match = most recent in chrono order
+                    break  # already found the most-recent in newest-first order
+                current_display_idx = i  # keep updating — last match = most recent in chrono order
 
     t = Table(show_header=True, header_style="bold cyan", border_style="dim")
     t.add_column("", width=2, justify="center")
@@ -1440,7 +1588,7 @@ def log_cmd(count: int, show_all: bool, desc: bool, prune_n: int | None) -> None
         exists = p.exists() if p.is_absolute() else False
         in_registry = p_resolved in registered_paths if p_resolved else False
         is_panic = p_resolved == panic_path_r if p_resolved else False
-        is_current = (row_idx == current_display_idx)
+        is_current = row_idx == current_display_idx
 
         # Determine icon and style
         if is_panic:
@@ -1484,9 +1632,8 @@ def log_cmd(count: int, show_all: bool, desc: bool, prune_n: int | None) -> None
         console.print("[dim]  ✓ active   ○ removed from registry   ✗ missing   P panic[/dim]")
 
 
-
-
 # ── resync ────────────────────────────────────────────────────────────────────
+
 
 @cli.command(name="resync")
 def resync() -> None:
@@ -1548,7 +1695,9 @@ def resync() -> None:
             # Update config references
             if panic_path_r and str(Path(old_path).resolve()) == panic_path_r:
                 config.panic.path = new_path
-            if config.state.last_image_path and str(Path(config.state.last_image_path).resolve()) == str(Path(old_path).resolve()):
+            if config.state.last_image_path and str(Path(config.state.last_image_path).resolve()) == str(
+                Path(old_path).resolve()
+            ):
                 config.state.last_image_path = new_path
             # Update log — use line-aware replace to avoid substring collisions
             _log_replace_path(old_path, new_path)
@@ -1571,7 +1720,9 @@ def resync() -> None:
                 existing_keys.add(str(Path(new_path).resolve()))
                 if panic_path_r and str(Path(old_path).resolve()) == panic_path_r:
                     config.panic.path = new_path
-                if config.state.last_image_path and str(Path(config.state.last_image_path).resolve()) == str(Path(old_path).resolve()):
+                if config.state.last_image_path and str(Path(config.state.last_image_path).resolve()) == str(
+                    Path(old_path).resolve()
+                ):
                     config.state.last_image_path = new_path
                 # Update log — use line-aware replace to avoid substring collisions
                 _log_replace_path(old_path, new_path)
@@ -1585,14 +1736,17 @@ def resync() -> None:
     save_config(config)
 
     console.print()
-    console.print(f"[green]Done.[/green] Updated: {auto_updated}  |  "
-                  f"[yellow]Ambiguous/skipped: {ambiguous}[/yellow]  |  "
-                  f"[red]Missing: {missing}[/red]")
+    console.print(
+        f"[green]Done.[/green] Updated: {auto_updated}  |  "
+        f"[yellow]Ambiguous/skipped: {ambiguous}[/yellow]  |  "
+        f"[red]Missing: {missing}[/red]"
+    )
     if missing:
         console.print("[dim]Missing images can be cleaned up with: kdam remove --stale[/dim]")
 
 
 # ── enable-image / disable-image ──────────────────────────────────────────────
+
 
 @cli.command(name="enable-image")
 @click.argument("path", shell_complete=_complete_image_name)
@@ -1614,7 +1768,7 @@ def enable_image(path: str) -> None:
         console.print(f"[yellow]Run [bold]kdam configure {path}[/bold] first to set its crop.[/yellow]")
         return
     entry.enabled = True
-    entry.suspended_by_dir = False   # explicit enable overrides any dir-level suspension
+    entry.suspended_by_dir = False  # explicit enable overrides any dir-level suspension
     db.set(abs_path, entry)
     db.save()
     console.print(f"[green]✓ Enabled: {Path(abs_path).name}[/green]")
@@ -1644,6 +1798,7 @@ def disable_image(path: str) -> None:
 
 # ── weight ────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("path", shell_complete=_complete_image_name)
 @click.argument("value", type=float)
@@ -1672,6 +1827,7 @@ def weight(path: str, value: float) -> None:
 
 
 # ── enable / disable / toggle / uninstall ─────────────────────────────────────
+
 
 @cli.command()
 def enable() -> None:
@@ -1756,7 +1912,9 @@ def toggle() -> None:
         if result is True:
             console.print("[green]Rotation ON — avatar rotated.[/green]")
         else:
-            console.print("[green]Rotation ON.[/green] [yellow](No configured images to rotate yet.)[/yellow]")
+            console.print(
+                "[green]Rotation ON.[/green] [yellow](No configured images to rotate yet.)[/yellow]"
+            )
 
 
 @cli.command()
@@ -1832,8 +1990,14 @@ def _completion_cleanup() -> None:
         Path.home() / ".zshrc",
         Path.home() / ".config" / "fish" / "config.fish",
     ]
-    skip_markers = ("_KDAM_COMPLETE", "# kdam shell completion", "# kdam",
-                    "completion.bash", "completion.zsh", "completion.fish")
+    skip_markers = (
+        "_KDAM_COMPLETE",
+        "# kdam shell completion",
+        "# kdam",
+        "completion.bash",
+        "completion.zsh",
+        "completion.fish",
+    )
     for rc in rc_files:
         if not rc.exists():
             continue
@@ -1868,10 +2032,15 @@ def _completion_cleanup() -> None:
 
 # ── completion setup ──────────────────────────────────────────────────────────
 
+
 @cli.command(name="completion")
-@click.option("--shell", "shell_name", default=None,
-              type=click.Choice(["bash", "zsh", "fish"], case_sensitive=False),
-              help="Shell type (auto-detected if omitted).")
+@click.option(
+    "--shell",
+    "shell_name",
+    default=None,
+    type=click.Choice(["bash", "zsh", "fish"], case_sensitive=False),
+    help="Shell type (auto-detected if omitted).",
+)
 def completion_cmd(shell_name: str | None) -> None:
     """Print shell completion setup instructions.
 
@@ -1879,6 +2048,7 @@ def completion_cmd(shell_name: str | None) -> None:
     Tab completion for all kdam image-name arguments.
     """
     import os
+
     if not shell_name:
         detected = Path(os.environ.get("SHELL", "")).name
         if detected in ("bash", "zsh", "fish"):
@@ -1906,7 +2076,6 @@ def completion_cmd(shell_name: str | None) -> None:
         console.print(f"  [dim]source {rc}[/dim]\n")
     console.print("[dim]Tab completion will then work for all image name arguments.[/dim]")
     console.print("[dim]Example: kdam rename by-aus<Tab>  →  by-aus-ome98_DTQG04cktJe_1.jpg[/dim]\n")
-
 
 
 # ── Subgroup registrations ───────────────────────────────────────────────────

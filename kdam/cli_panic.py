@@ -1,4 +1,5 @@
 """cli_panic.py — panic group and subcommands."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -224,12 +225,14 @@ def panic_show() -> None:
         p = Path(config.panic.path)
         exists = p.exists()
         crop_info = (
-            f" (crop: x={config.panic.crop['x']} y={config.panic.crop['y']}"
-            f" s={config.panic.crop['size']})"
-            if config.panic.crop else " (default crop)"
+            f" (crop: x={config.panic.crop['x']} y={config.panic.crop['y']} s={config.panic.crop['size']})"
+            if config.panic.crop
+            else " (default crop)"
         )
         console.print(f"  Configured panic image : {config.panic.path}{crop_info}")
-        console.print(f"  Status                 : {'[green]found[/green]' if exists else '[red]MISSING[/red]'}")
+        console.print(
+            f"  Status                 : {'[green]found[/green]' if exists else '[red]MISSING[/red]'}"
+        )
     else:
         console.print("  Configured panic image : [dim]none (using fallback snapshot)[/dim]")
 
@@ -237,6 +240,6 @@ def panic_show() -> None:
     console.print(f"  Initial backup snapshot: {BACKUP_FILE}")
     console.print(
         f"  Backup status          : "
-        f"{'[green]found[/green]' if b_exists else '[yellow]not yet created (run kdam panic snapshot)[/yellow]'}"
+        f"{'[green]found[/green]' if b_exists else '[yellow]not yet created (run kdam panic snapshot)[/yellow]'}"  # noqa: E501
     )
     console.print()

@@ -3,6 +3,7 @@
 Uses org.freedesktop.Accounts.User.SetIconFile — the same call that KDE System
 Settings makes internally — so no root privilege is ever required.
 """
+
 from __future__ import annotations
 
 import os

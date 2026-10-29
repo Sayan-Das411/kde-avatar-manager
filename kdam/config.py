@@ -4,6 +4,7 @@ All runtime data lives in ~/.kde-avatar-manager/ — independent of where the
 project source directory is located.  Moving the project only requires re-running
 install.sh from the new location to refresh the binary in ~/.local/bin/kdam.
 """
+
 import contextlib
 import fcntl
 import json
@@ -75,6 +76,7 @@ def _db_lock():
 
 # ── Data classes ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Directory:
     path: str
@@ -96,6 +98,7 @@ class Directory:
 @dataclass
 class PanicConfig:
     """Panic reset configuration.  path=None means use the auto-snapshot backup."""
+
     path: str | None = None
     crop: dict | None = None  # {"x": int, "y": int, "size": int}
 
@@ -107,16 +110,15 @@ class PanicConfig:
         return cls(path=d.get("path"), crop=d.get("crop"))
 
 
-
 @dataclass
 class RotationConfig:
-    mode: str = "daily"          # "daily" | "interval" | "times" | "weekly" | "monthly"
-    order: str = "random"        # "sequential" | "random" | "weighted" | "lru" | "deck"
-    interval_hours: int = 24     # integer hours for simple intervals (legacy & quick)
-    interval: str = ""           # flexible duration (e.g. "6h", "45m", "12d 13h 52m")
-    start_hour: int = 0          # anchor hour (0-23) for clock-aligned intervals (e.g. 0 -> 00:00, 06:00...)
+    mode: str = "daily"  # "daily" | "interval" | "times" | "weekly" | "monthly"
+    order: str = "random"  # "sequential" | "random" | "weighted" | "lru" | "deck"
+    interval_hours: int = 24  # integer hours for simple intervals (legacy & quick)
+    interval: str = ""  # flexible duration (e.g. "6h", "45m", "12d 13h 52m")
+    start_hour: int = 0  # anchor hour (0-23) for clock-aligned intervals (e.g. 0 -> 00:00, 06:00...)
     times: list[str] = field(default_factory=list)  # list of "HH:MM" clock times for "times" mode
-    weekday: str = "mon"         # "mon".."sun" for "weekly" mode
+    weekday: str = "mon"  # "mon".."sun" for "weekly" mode
     lru_pool_size: str = "default"  # "default" or integer string (e.g. "15")
 
     def to_dict(self) -> dict:
@@ -145,11 +147,11 @@ class RotationConfig:
 @dataclass
 class State:
     enabled: bool = True
-    current_index: int = 0               # pointer for sequential rotation
+    current_index: int = 0  # pointer for sequential rotation
     last_rotation: str | None = None  # ISO-8601 datetime string
     last_image_path: str | None = None  # Source path of currently applied rotation image
-    frozen: bool = False                 # True = rotation paused
-    frozen_until: str | None = None   # ISO-8601 end time; None = indefinite
+    frozen: bool = False  # True = rotation paused
+    frozen_until: str | None = None  # ISO-8601 end time; None = indefinite
     deck: list[str] = field(default_factory=list)  # Remaining images in current deck cycle
 
     def to_dict(self) -> dict:
@@ -166,7 +168,6 @@ class State:
             frozen_until=d.get("frozen_until"),
             deck=list(d.get("deck", [])),
         )
-
 
 
 @dataclass
@@ -195,6 +196,7 @@ class Config:
 
 
 # ── I/O ───────────────────────────────────────────────────────────────────────
+
 
 def load_config() -> Config:
     """Load config from disk (exclusive lock).  Returns defaults if missing or corrupt.

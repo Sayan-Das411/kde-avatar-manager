@@ -1,4 +1,5 @@
 """Directory scanner — discovers new images and detects stale registry entries."""
+
 from __future__ import annotations
 
 import os
@@ -33,8 +34,7 @@ def _walk_directory(dir_path: Path, recursive: bool) -> list[Path]:
         return images
 
     if recursive:
-        for root, _dirs, files in os.walk(str(dir_path), followlinks=False,
-                                           onerror=lambda _: None):
+        for root, _dirs, files in os.walk(str(dir_path), followlinks=False, onerror=lambda _: None):
             root_path = Path(root)
             for fname in sorted(files):
                 fpath = (root_path / fname).resolve()

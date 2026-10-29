@@ -26,6 +26,7 @@ Return values of open_crop_editor()
 - None               — user skipped (closed window or clicked Skip)
 - EDITOR_QUIT        — user clicked Quit (stop configure-all)
 """
+
 from __future__ import annotations
 
 import sys
@@ -54,9 +55,10 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-PREVIEW_SIZE = 170    # px — circular preview diameter
-HANDLE_SIZE  = 14     # px — resize handle corner square
-MIN_CROP_PX  = 32     # minimum crop size in image pixels
+PREVIEW_SIZE = 170  # px — circular preview diameter
+HANDLE_SIZE = 14  # px — resize handle corner square
+MIN_CROP_PX = 32  # minimum crop size in image pixels
+
 
 class EditorQuit:
     """Typed singleton sentinel returned by open_crop_editor when user clicks Quit.
@@ -64,6 +66,7 @@ class EditorQuit:
     Using a class instead of ``object()`` lets callers annotate against
     ``EditorQuit`` and lets mypy verify ``result is EDITOR_QUIT`` checks.
     """
+
     _instance: EditorQuit | None = None
 
     def __new__(cls) -> EditorQuit:
@@ -89,22 +92,24 @@ _MAX_PREVIEW_SRC_PX = 800
 
 # ── Silence KDE font-config Qt warnings ───────────────────────────────────────
 
+
 def _qt_msg_handler(msg_type: int, context, message: str) -> None:
     """Drop harmless 'QFont::fromString: Invalid description' noise from KDE."""
     if "QFont::fromString" in message:
         return
     # Everything else: write to stderr as Qt normally would
     import sys as _sys
+
     _sys.stderr.write(message + "\n")
 
 
 # ── PIL ↔ QImage helper ───────────────────────────────────────────────────────
 
+
 def _pil_to_qimage(pil_img: Image.Image) -> QImage:
     pil_img = pil_img.convert("RGBA")
     data = pil_img.tobytes("raw", "RGBA")
-    qimg = QImage(data, pil_img.width, pil_img.height,
-                  4 * pil_img.width, QImage.Format_RGBA8888)
+    qimg = QImage(data, pil_img.width, pil_img.height, 4 * pil_img.width, QImage.Format_RGBA8888)
     qimg._buffer = data  # prevent GC — QImage does NOT copy the buffer
     return qimg
 
@@ -115,19 +120,25 @@ def _pil_to_pixmap(pil_img: Image.Image) -> QPixmap:
 
 # ── Circular preview widget ───────────────────────────────────────────────────
 
+
 class CirclePreview(QWidget):
     """Live circular preview — throttled to ≤30 fps so it never blocks drag."""
 
-    def __init__(self, fast_src: Image.Image, fast_scale: float,
-                 size: int = PREVIEW_SIZE, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        fast_src: Image.Image,
+        fast_scale: float,
+        size: int = PREVIEW_SIZE,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
-        self._fast_src   = fast_src    # pre-scaled PIL image for cheap cropping
+        self._fast_src = fast_src  # pre-scaled PIL image for cheap cropping
         self._fast_scale = fast_scale  # ratio: fast_src_px / original_px
         self._pixmap: QPixmap | None = None
         self.setFixedSize(size, size)
 
         # Throttle: at most one PIL operation per 33 ms (~30 fps)
-        self._pending: dict | None = None   # crop dict in original coords
+        self._pending: dict | None = None  # crop dict in original coords
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(33)
@@ -137,7 +148,7 @@ class CirclePreview(QWidget):
         """Queue a preview redraw for the given crop (original image coords)."""
         self._pending = crop
         if not self._timer.isActive():
-            self._flush()   # render immediately for the first event in a burst
+            self._flush()  # render immediately for the first event in a burst
 
     def _flush(self) -> None:
         if self._pending is None:
@@ -155,9 +166,7 @@ class CirclePreview(QWidget):
         s = max(1, min(s, iw - x, ih - y))
 
         side = self.width()
-        cropped = (self._fast_src
-                   .crop((x, y, x + s, y + s))
-                   .resize((side, side), Image.BILINEAR))
+        cropped = self._fast_src.crop((x, y, x + s, y + s)).resize((side, side), Image.BILINEAR)
         self._pixmap = _pil_to_pixmap(cropped)
         self.update()
 
@@ -182,36 +191,39 @@ class CirclePreview(QWidget):
 
 # ── Interactive crop canvas ───────────────────────────────────────────────────
 
+
 class ImageCropWidget(QWidget):
     """Image canvas with a draggable + resizable crop square.
 
     paintEvent only ever draws the pre-cached QPixmap — no PIL work during drag.
     """
 
-    crop_changed = pyqtSignal(int, int, int)   # x, y, size — original image coords
+    crop_changed = pyqtSignal(int, int, int)  # x, y, size — original image coords
 
-    def __init__(self,
-                 pil_image: Image.Image,
-                 display_pm: QPixmap,           # pre-built, display-fit pixmap
-                 initial_crop: dict | None = None,
-                 parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        pil_image: Image.Image,
+        display_pm: QPixmap,  # pre-built, display-fit pixmap
+        initial_crop: dict | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.iw, self.ih = pil_image.size
-        self._display_pm = display_pm           # never recomputed during drag
+        self._display_pm = display_pm  # never recomputed during drag
 
         # Initialise crop square
         if initial_crop and all(k in initial_crop for k in ("x", "y", "size")):
-            self.crop_x    = int(initial_crop["x"])
-            self.crop_y    = int(initial_crop["y"])
+            self.crop_x = int(initial_crop["x"])
+            self.crop_y = int(initial_crop["y"])
             self.crop_size = int(initial_crop["size"])
         else:
             self.crop_size = min(self.iw, self.ih)
-            self.crop_x    = (self.iw - self.crop_size) // 2
-            self.crop_y    = (self.ih - self.crop_size) // 2
+            self.crop_x = (self.iw - self.crop_size) // 2
+            self.crop_y = (self.ih - self.crop_size) // 2
         self._clamp()
 
         # Drag state
-        self._drag_mode: str | None = None   # 'move' | 'resize'
+        self._drag_mode: str | None = None  # 'move' | 'resize'
         self._drag_origin: QPoint = QPoint()
         self._drag_start: tuple[int, int, int] = (self.crop_x, self.crop_y, self.crop_size)
 
@@ -235,8 +247,8 @@ class ImageCropWidget(QWidget):
 
     def _clamp(self) -> None:
         self.crop_size = max(MIN_CROP_PX, min(self.crop_size, self.iw, self.ih))
-        self.crop_x    = max(0, min(self.crop_x, self.iw - self.crop_size))
-        self.crop_y    = max(0, min(self.crop_y, self.ih - self.crop_size))
+        self.crop_x = max(0, min(self.crop_x, self.iw - self.crop_size))
+        self.crop_y = max(0, min(self.crop_y, self.ih - self.crop_size))
 
     def get_crop(self) -> dict:
         return {"x": self.crop_x, "y": self.crop_y, "size": self.crop_size}
@@ -250,8 +262,7 @@ class ImageCropWidget(QWidget):
         dw, dh, scale, ox, oy = self._display_params()
 
         # Draw pre-cached display pixmap (scaled to fit, fast)
-        scaled = self._display_pm.scaled(dw, dh, Qt.KeepAspectRatio,
-                                          Qt.SmoothTransformation)
+        scaled = self._display_pm.scaled(dw, dh, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         p.drawPixmap(ox, oy, scaled)
 
         # Crop square in widget coords
@@ -260,10 +271,10 @@ class ImageCropWidget(QWidget):
 
         # Dark overlay — four rects surrounding the crop area
         dim = QColor(0, 0, 0, 140)
-        p.fillRect(ox,      oy,       dw,                cy - oy,          dim)
-        p.fillRect(ox,      cy + cs,  dw,                oy + dh - cy - cs, dim)
-        p.fillRect(ox,      cy,       cx - ox,           cs,               dim)
-        p.fillRect(cx + cs, cy,       ox + dw - cx - cs, cs,               dim)
+        p.fillRect(ox, oy, dw, cy - oy, dim)
+        p.fillRect(ox, cy + cs, dw, oy + dh - cy - cs, dim)
+        p.fillRect(ox, cy, cx - ox, cs, dim)
+        p.fillRect(cx + cs, cy, ox + dw - cx - cs, cs, dim)
 
         # Crop border
         p.setPen(QPen(Qt.white, 2))
@@ -278,8 +289,9 @@ class ImageCropWidget(QWidget):
             p.drawLine(cx, cy + third * i, cx + cs, cy + third * i)
 
         # Resize handle (bottom-right white square)
-        p.fillRect(cx + cs - HANDLE_SIZE, cy + cs - HANDLE_SIZE,
-                   HANDLE_SIZE, HANDLE_SIZE, QColor(255, 255, 255, 210))
+        p.fillRect(
+            cx + cs - HANDLE_SIZE, cy + cs - HANDLE_SIZE, HANDLE_SIZE, HANDLE_SIZE, QColor(255, 255, 255, 210)
+        )
 
     # ── Hit tests ─────────────────────────────────────────────────────────────
 
@@ -287,8 +299,7 @@ class ImageCropWidget(QWidget):
         cx, cy = self._img_to_w(self.crop_x, self.crop_y)
         _, _, scale, _, _ = self._display_params()
         cs = int(self.crop_size * scale)
-        return (cx + cs - HANDLE_SIZE) <= wx <= (cx + cs) and \
-               (cy + cs - HANDLE_SIZE) <= wy <= (cy + cs)
+        return (cx + cs - HANDLE_SIZE) <= wx <= (cx + cs) and (cy + cs - HANDLE_SIZE) <= wy <= (cy + cs)
 
     def _in_crop(self, wx: int, wy: int) -> bool:
         cx, cy = self._img_to_w(self.crop_x, self.crop_y)
@@ -309,7 +320,7 @@ class ImageCropWidget(QWidget):
                 self._drag_mode = None
                 return
             self._drag_origin = pos
-            self._drag_start  = (self.crop_x, self.crop_y, self.crop_size)
+            self._drag_start = (self.crop_x, self.crop_y, self.crop_size)
 
     def mouseMoveEvent(self, event) -> None:  # noqa: N802
         pos = event.pos()
@@ -338,7 +349,7 @@ class ImageCropWidget(QWidget):
             self.crop_size = int(ss + delta)
 
         self._clamp()
-        self.update()                                              # repaint (no PIL)
+        self.update()  # repaint (no PIL)
         self.crop_changed.emit(self.crop_x, self.crop_y, self.crop_size)
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802
@@ -380,6 +391,7 @@ class ImageCropWidget(QWidget):
 
 # ── Main window ───────────────────────────────────────────────────────────────
 
+
 class CropEditorWindow(QMainWindow):
     """Main crop editor window.
 
@@ -387,8 +399,7 @@ class CropEditorWindow(QMainWindow):
     _quit is set True when user clicks Quit (vs. Skip/close which leaves it False).
     """
 
-    def __init__(self, image_path: str,
-                 initial_crop: dict | None = None) -> None:
+    def __init__(self, image_path: str, initial_crop: dict | None = None) -> None:
         super().__init__()
         self.result_crop: dict | None = None
         self._quit: bool = False
@@ -399,7 +410,8 @@ class CropEditorWindow(QMainWindow):
             # Warn but allow small images (they'll be upscaled on save)
             if pil_image.width < 64 or pil_image.height < 64:
                 QMessageBox.warning(
-                    self, "Small Image",
+                    self,
+                    "Small Image",
                     f"Image is {pil_image.width}×{pil_image.height} px.\n"
                     "It will be upscaled — quality may be reduced.",
                 )
@@ -423,10 +435,10 @@ class CropEditorWindow(QMainWindow):
         if max(iw, ih) > _MAX_PREVIEW_SRC_PX:
             r = _MAX_PREVIEW_SRC_PX / max(iw, ih)
             pw, ph = int(iw * r), int(ih * r)
-            self._fast_src   = pil_image.convert("RGBA").resize((pw, ph), Image.BILINEAR)
+            self._fast_src = pil_image.convert("RGBA").resize((pw, ph), Image.BILINEAR)
             self._fast_scale = r
         else:
-            self._fast_src   = pil_image.convert("RGBA")
+            self._fast_src = pil_image.convert("RGBA")
             self._fast_scale = 1.0
 
         self.setWindowTitle(f"Crop Editor — {Path(image_path).name}")
@@ -441,8 +453,7 @@ class CropEditorWindow(QMainWindow):
         layout.setSpacing(10)
 
         # ── Left: crop canvas ─────────────────────────────────────────────────
-        self.crop_widget = ImageCropWidget(
-            self.pil_image, self._display_pm, initial_crop)
+        self.crop_widget = ImageCropWidget(self.pil_image, self._display_pm, initial_crop)
         self.crop_widget.crop_changed.connect(self._on_crop_changed)
         layout.addWidget(self.crop_widget, stretch=1)
 
@@ -530,8 +541,8 @@ class CropEditorWindow(QMainWindow):
         """Re-centre the crop square to the middle of the image."""
         w = self.crop_widget
         w.crop_size = min(w.iw, w.ih)
-        w.crop_x    = (w.iw - w.crop_size) // 2
-        w.crop_y    = (w.ih - w.crop_size) // 2
+        w.crop_x = (w.iw - w.crop_size) // 2
+        w.crop_y = (w.ih - w.crop_size) // 2
         w._clamp()
         w.update()
         w.crop_changed.emit(w.crop_x, w.crop_y, w.crop_size)
@@ -562,8 +573,7 @@ class CropEditorWindow(QMainWindow):
 _msg_handler_installed = False
 
 
-def open_crop_editor(image_path: str,
-                     initial_crop: dict | None = None) -> dict[str, int] | EditorQuit | None:
+def open_crop_editor(image_path: str, initial_crop: dict | None = None) -> dict[str, int] | EditorQuit | None:
     """Open the crop editor and block until the user saves, skips, or quits.
 
     Returns:
@@ -580,6 +590,7 @@ def open_crop_editor(image_path: str,
     # app construction, so installing after is too late.
     if not _msg_handler_installed:
         from PyQt5.QtCore import qInstallMessageHandler
+
         qInstallMessageHandler(_qt_msg_handler)  # type: ignore[arg-type]
         _msg_handler_installed = True
 
@@ -590,6 +601,7 @@ def open_crop_editor(image_path: str,
     # Qt.UniqueConnection prevents duplicate slots accumulating across repeated
     # open_crop_editor() calls (e.g. configure-all over 50 images).
     from PyQt5.QtCore import Qt
+
     window.destroyed.connect(app.quit, Qt.UniqueConnection)  # type: ignore[attr-defined,call-arg]
     window.show()
     app.exec_()

@@ -1,4 +1,5 @@
 """Shared helpers, constants, and utilities used across all kdam CLI modules."""
+
 from __future__ import annotations
 
 import re
@@ -31,7 +32,7 @@ console = Console()
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 SERVICE_NAME = "kde-avatar-rotate"
 _SERVICE_FILE = SYSTEMD_USER_DIR / f"{SERVICE_NAME}.service"
-_TIMER_FILE   = SYSTEMD_USER_DIR / f"{SERVICE_NAME}.timer"
+_TIMER_FILE = SYSTEMD_USER_DIR / f"{SERVICE_NAME}.timer"
 
 
 def _kdam_bin() -> str:
@@ -167,9 +168,7 @@ def _write_systemd_files(config: Config) -> None:
     directives, _ = _build_timer_directives(config)
     timer_body = (
         "[Unit]\nDescription=KDE Avatar Auto-Rotator Timer\n\n"
-        "[Timer]\n"
-        + "\n".join(directives)
-        + "\n\n[Install]\nWantedBy=timers.target\n"
+        "[Timer]\n" + "\n".join(directives) + "\n\n[Install]\nWantedBy=timers.target\n"
     )
 
     _TIMER_FILE.write_text(timer_body)
@@ -194,7 +193,8 @@ def _ensure_backup() -> None:
 
 
 def _process_panic_image(
-    src_path: Path, crop: dict | None = None,
+    src_path: Path,
+    crop: dict | None = None,
 ) -> Path:
     """Crop + resize a panic source image and write to both panic.png and backup.png."""
     from PIL import Image as PILImage
@@ -206,7 +206,7 @@ def _process_panic_image(
         y = max(0, min(crop["y"], ih - 1))
         s = max(1, min(crop["size"], iw - x, ih - y))
         img = img.crop((x, y, x + s, y + s))
-    img = img.resize((AVATAR_SIZE, AVATAR_SIZE), PILImage.LANCZOS)
+    img = img.resize((AVATAR_SIZE, AVATAR_SIZE), PILImage.Resampling.LANCZOS)
 
     PROCESSED_DIR.mkdir(exist_ok=True)
     panic_out = PROCESSED_DIR / "panic.png"
@@ -244,7 +244,8 @@ def _do_panic_reset(config: Config) -> bool:
             and src_path.resolve() == Path(config.panic.path).expanduser().resolve()
         )
         panic_out = _process_panic_image(
-            src_path, config.panic.crop if use_crop else None,
+            src_path,
+            config.panic.crop if use_crop else None,
         )
         kde.set_avatar(panic_out)
         config.state.last_image_path = str(src_path)
@@ -376,10 +377,11 @@ def _resolve_image_path(query: str, db: ImageDB, interactive: bool = True) -> st
             try:
                 choice = click.prompt(
                     f"Select image [1-{len(matches)}] (or 0 to cancel)",
-                    type=int, default=1,
+                    type=int,
+                    default=1,
                 )
                 if 1 <= choice <= len(matches):
-                    return matches[choice - 1]
+                    return str(matches[choice - 1])
                 console.print("[dim]Selection cancelled.[/dim]")
                 return None
             except Exception:
@@ -395,6 +397,7 @@ def _resolve_image_path(query: str, db: ImageDB, interactive: bool = True) -> st
 
 
 # ── Shell completion helpers ───────────────────────────────────────────────────
+
 
 def _complete_image_name(ctx, param, incomplete):
     """Return shell completion items for registered image names/paths and disk paths."""
@@ -417,7 +420,7 @@ def _complete_image_name(ctx, param, incomplete):
             if is_path_query:
                 candidates = [path]
                 if path.startswith(home_str):
-                    candidates.append("~" + path[len(home_str):])
+                    candidates.append("~" + path[len(home_str) :])
                 for cand in candidates:
                     if cand.lower().startswith(incomplete.lower()) and cand not in seen:
                         seen.add(cand)
@@ -466,6 +469,7 @@ def _complete_configured_dirs(ctx, param, incomplete):
     """Complete directory paths that are currently configured."""
     try:
         from click.shell_completion import CompletionItem
+
         config = load_config()
         results = []
         home_str = str(Path.home())
@@ -474,7 +478,7 @@ def _complete_configured_dirs(ctx, param, incomplete):
             p_str = str(d.path)
             candidates = [p_str]
             if p_str.startswith(home_str):
-                candidates.append("~" + p_str[len(home_str):])
+                candidates.append("~" + p_str[len(home_str) :])
             for cand in candidates:
                 if cand.lower().startswith(incomplete.lower()) and cand not in seen:
                     seen.add(cand)
@@ -491,6 +495,7 @@ def _complete_command_name(ctx, param, incomplete):
 
         # Import lazily to avoid circular import — cli is always available at call time
         from .cli import cli as _cli
+
         commands = sorted(_cli.commands.keys())
         return [CompletionItem(cmd) for cmd in commands if cmd.lower().startswith(incomplete.lower())]
     except Exception:
@@ -512,12 +517,14 @@ _CONFIG_KEYS = [
 def _complete_config_key(ctx, param, incomplete):
     """Complete valid configuration keys for 'kdam config set'."""
     from click.shell_completion import CompletionItem
+
     return [CompletionItem(k) for k in _CONFIG_KEYS if k.lower().startswith(incomplete.lower())]
 
 
 def _complete_config_value(ctx, param, incomplete):
     """Complete valid configuration values based on the key."""
     from click.shell_completion import CompletionItem
+
     key = ctx.args[0] if ctx.args else ctx.params.get("key", "")
     choices: list[str] = []
     if key == "rotation.mode":

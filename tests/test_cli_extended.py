@@ -1,16 +1,15 @@
 """Additional CLI tests — panic, list status icons, log current marker,
 freeze/unfreeze, dirs suspend/resume, resync, weight, and misc commands."""
+
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from click.testing import CliRunner
-from PIL import Image
-
 from helpers import _patch_paths  # shared: redirects all paths to tmp, silences notify
+from PIL import Image
 
 
 def _make_png(path: Path, size=(64, 64)) -> Path:
@@ -20,7 +19,8 @@ def _make_png(path: Path, size=(64, 64)) -> Path:
 
 def _register_image(tmp_path, monkeypatch, filename="img.png", configured=True, enabled=True):
     """Create a real PNG and register it in the DB. Returns absolute path string."""
-    from kdam.db import ImageDB, ImageEntry, CropInfo
+    from kdam.db import CropInfo, ImageDB, ImageEntry
+
     img = _make_png(tmp_path / filename)
     db = ImageDB()
     entry = ImageEntry(
@@ -35,13 +35,14 @@ def _register_image(tmp_path, monkeypatch, filename="img.png", configured=True, 
 
 # ── kdam list — panic image icon ──────────────────────────────────────────────
 
+
 class TestListPanicIcon:
     def test_panic_image_shows_P_not_unconfigured(self, tmp_path, monkeypatch):
         """The panic image must show 'P' (magenta) even if it is in the DB as unconfigured."""
         _patch_paths(tmp_path, monkeypatch)
+        from kdam.cli import cli
         from kdam.config import load_config, save_config
         from kdam.db import ImageDB, ImageEntry
-        from kdam.cli import cli
 
         # Create and register the image as UNCONFIGURED (no crop set)
         img = _make_png(tmp_path / "trees.jpg")
@@ -63,8 +64,9 @@ class TestListPanicIcon:
 
     def test_configured_non_panic_shows_checkmark(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        img_path = _register_image(tmp_path, monkeypatch, "good.png", configured=True, enabled=True)
+        _register_image(tmp_path, monkeypatch, "good.png", configured=True, enabled=True)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["list"])
         assert result.exit_code == 0
@@ -72,8 +74,9 @@ class TestListPanicIcon:
 
     def test_unconfigured_non_panic_shows_cross(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        img_path = _register_image(tmp_path, monkeypatch, "raw.png", configured=False, enabled=False)
+        _register_image(tmp_path, monkeypatch, "raw.png", configured=False, enabled=False)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["list"])
         assert result.exit_code == 0
@@ -82,9 +85,9 @@ class TestListPanicIcon:
     def test_panic_in_list_excluded_from_unconfigured_count(self, tmp_path, monkeypatch):
         """The summary line must not count the panic image as unconfigured."""
         _patch_paths(tmp_path, monkeypatch)
+        from kdam.cli import cli
         from kdam.config import load_config, save_config
         from kdam.db import ImageDB, ImageEntry
-        from kdam.cli import cli
 
         img = _make_png(tmp_path / "panic.png")
         db = ImageDB()
@@ -104,6 +107,7 @@ class TestListPanicIcon:
 
 # ── kdam log — current marker ─────────────────────────────────────────────────
 
+
 class TestLogCurrentMarker:
     def _write_log_and_set_current(self, tmp_path, current_img: str):
         log = tmp_path / "logs" / "rotation.log"
@@ -115,8 +119,8 @@ class TestLogCurrentMarker:
 
     def test_current_marker_shown_oldest_first(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
 
         img = _make_png(tmp_path / "current.png")
         self._write_log_and_set_current(tmp_path, str(img))
@@ -133,8 +137,8 @@ class TestLogCurrentMarker:
     def test_current_marker_shown_desc(self, tmp_path, monkeypatch):
         """← current must appear exactly once even in --desc (newest-first) mode."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
 
         img = _make_png(tmp_path / "current.png")
         self._write_log_and_set_current(tmp_path, str(img))
@@ -153,6 +157,7 @@ class TestLogCurrentMarker:
         log = tmp_path / "logs" / "rotation.log"
         log.write_text("2026-09-01T10:00:00 | /some/img.png\n")
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["log", "--all"])
         assert result.exit_code == 0
@@ -161,11 +166,13 @@ class TestLogCurrentMarker:
 
 # ── kdam freeze / unfreeze ────────────────────────────────────────────────────
 
+
 class TestFreezeUnfreeze:
     def test_freeze_sets_frozen_flag(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config
+
         runner = CliRunner()
         result = runner.invoke(cli, ["freeze"])
         assert result.exit_code == 0
@@ -176,6 +183,7 @@ class TestFreezeUnfreeze:
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config
+
         runner = CliRunner()
         result = runner.invoke(cli, ["freeze", "2h"])
         assert result.exit_code == 0
@@ -187,6 +195,7 @@ class TestFreezeUnfreeze:
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config, save_config
+
         cfg = load_config()
         cfg.state.frozen = True
         save_config(cfg)
@@ -200,6 +209,7 @@ class TestFreezeUnfreeze:
     def test_freeze_invalid_duration_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["freeze", "notaduration"])
         assert result.exit_code == 0
@@ -208,20 +218,20 @@ class TestFreezeUnfreeze:
 
 # ── kdam dirs suspend / resume ────────────────────────────────────────────────
 
+
 class TestDirsSuspendResume:
     def test_suspend_pauses_images(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config, Directory
-        from kdam.db import ImageDB, ImageEntry, CropInfo
         from kdam.cli import cli
+        from kdam.config import Directory, load_config, save_config
+        from kdam.db import CropInfo, ImageDB, ImageEntry
 
         img_dir = tmp_path / "avatars"
         img_dir.mkdir()
         img = _make_png(img_dir / "photo.png")
 
         db = ImageDB()
-        db.set(str(img), ImageEntry(configured=True, enabled=True,
-                                    crop=CropInfo(x=0, y=0, size=64)))
+        db.set(str(img), ImageEntry(configured=True, enabled=True, crop=CropInfo(x=0, y=0, size=64)))
         db.save()
 
         cfg = load_config()
@@ -240,9 +250,9 @@ class TestDirsSuspendResume:
 
     def test_resume_restores_paused_images(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config, Directory
-        from kdam.db import ImageDB, ImageEntry, CropInfo
         from kdam.cli import cli
+        from kdam.config import Directory, load_config, save_config
+        from kdam.db import CropInfo, ImageDB, ImageEntry
 
         img_dir = tmp_path / "avatars"
         img_dir.mkdir()
@@ -250,9 +260,12 @@ class TestDirsSuspendResume:
 
         # Pre-suspend
         db = ImageDB()
-        db.set(str(img), ImageEntry(configured=True, enabled=False,
-                                    crop=CropInfo(x=0, y=0, size=64),
-                                    suspended_by_dir=True))
+        db.set(
+            str(img),
+            ImageEntry(
+                configured=True, enabled=False, crop=CropInfo(x=0, y=0, size=64), suspended_by_dir=True
+            ),
+        )
         db.save()
 
         cfg = load_config()
@@ -272,16 +285,16 @@ class TestDirsSuspendResume:
 
 # ── kdam weight ───────────────────────────────────────────────────────────────
 
+
 class TestWeightCommand:
     def test_weight_updates_entry(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry, CropInfo
         from kdam.cli import cli
+        from kdam.db import CropInfo, ImageDB, ImageEntry
 
         img = _make_png(tmp_path / "w.png")
         db = ImageDB()
-        db.set(str(img), ImageEntry(configured=True, enabled=True,
-                                    crop=CropInfo(x=0, y=0, size=64)))
+        db.set(str(img), ImageEntry(configured=True, enabled=True, crop=CropInfo(x=0, y=0, size=64)))
         db.save()
 
         runner = CliRunner()
@@ -294,8 +307,8 @@ class TestWeightCommand:
 
     def test_weight_zero_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry
         from kdam.cli import cli
+        from kdam.db import ImageDB, ImageEntry
 
         img = _make_png(tmp_path / "w.png")
         db = ImageDB()
@@ -308,8 +321,8 @@ class TestWeightCommand:
 
     def test_weight_negative_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry
         from kdam.cli import cli
+        from kdam.db import ImageDB, ImageEntry
 
         img = _make_png(tmp_path / "w.png")
         db = ImageDB()
@@ -324,12 +337,14 @@ class TestWeightCommand:
 
 # ── kdam enable-image / disable-image ─────────────────────────────────────────
 
+
 class TestEnableDisableImage:
     def test_disable_sets_enabled_false(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         img_path = _register_image(tmp_path, monkeypatch, "img.png", configured=True, enabled=True)
         from kdam.cli import cli
         from kdam.db import ImageDB
+
         runner = CliRunner()
         result = runner.invoke(cli, ["disable-image", img_path])
         assert result.exit_code == 0
@@ -340,6 +355,7 @@ class TestEnableDisableImage:
         img_path = _register_image(tmp_path, monkeypatch, "img.png", configured=True, enabled=False)
         from kdam.cli import cli
         from kdam.db import ImageDB
+
         runner = CliRunner()
         result = runner.invoke(cli, ["enable-image", img_path])
         assert result.exit_code == 0
@@ -350,6 +366,7 @@ class TestEnableDisableImage:
         _patch_paths(tmp_path, monkeypatch)
         img_path = _register_image(tmp_path, monkeypatch, "img.png", configured=False, enabled=False)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["enable-image", img_path])
         assert result.exit_code == 0
@@ -358,12 +375,14 @@ class TestEnableDisableImage:
 
 # ── kdam remove ───────────────────────────────────────────────────────────────
 
+
 class TestRemoveCommand:
     def test_remove_known_image(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         img_path = _register_image(tmp_path, monkeypatch, "rem.png")
         from kdam.cli import cli
         from kdam.db import ImageDB
+
         runner = CliRunner()
         result = runner.invoke(cli, ["remove", img_path])
         assert result.exit_code == 0
@@ -371,9 +390,10 @@ class TestRemoveCommand:
 
     def test_remove_stale(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry
         from kdam.cli import cli
-        ghost = str(tmp_path / "ghost.png")   # file does not exist
+        from kdam.db import ImageDB, ImageEntry
+
+        ghost = str(tmp_path / "ghost.png")  # file does not exist
         db = ImageDB()
         db.set(ghost, ImageEntry(configured=True, enabled=True))
         db.save()
@@ -385,6 +405,7 @@ class TestRemoveCommand:
     def test_remove_unknown_image(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["remove", "/does/not/exist.png"])
         assert result.exit_code == 0
@@ -393,11 +414,13 @@ class TestRemoveCommand:
 
 # ── kdam config set ───────────────────────────────────────────────────────────
 
+
 class TestConfigSet:
     def test_set_rotation_order(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config
+
         runner = CliRunner()
         result = runner.invoke(cli, ["config", "set", "rotation.order", "weighted"])
         assert result.exit_code == 0
@@ -406,6 +429,7 @@ class TestConfigSet:
     def test_set_invalid_order_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["config", "set", "rotation.order", "banana"])
         assert "must be" in result.output.lower()
@@ -414,6 +438,7 @@ class TestConfigSet:
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config
+
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
         runner = CliRunner()
         result = runner.invoke(cli, ["config", "set", "rotation.interval_hours", "8"])
@@ -423,6 +448,7 @@ class TestConfigSet:
     def test_set_unknown_key_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["config", "set", "rotation.nonexistent", "value"])
         assert "unknown" in result.output.lower()
@@ -430,12 +456,14 @@ class TestConfigSet:
 
 # ── kdam log --prune ──────────────────────────────────────────────────────────
 
+
 class TestLogPrune:
     def test_prune_zero_rejected(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         log = tmp_path / "logs" / "rotation.log"
         log.write_text("2026-09-01T10:00:00 | /img.png\n")
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["log", "--prune", "0"])
         assert result.exit_code == 0
@@ -447,9 +475,10 @@ class TestLogPrune:
         entries = [f"2026-09-0{i}T10:00:00 | /img{i}.png" for i in range(1, 6)]
         log.write_text("\n".join(entries) + "\n")
         from kdam.cli import cli
+
         runner = CliRunner()
         runner.invoke(cli, ["log", "--prune", "2"])
-        kept = [l for l in log.read_text().splitlines() if l.strip()]
+        kept = [line for line in log.read_text().splitlines() if line.strip()]
         assert len(kept) == 2
         assert "img4" in kept[0]
         assert "img5" in kept[1]
@@ -457,13 +486,14 @@ class TestLogPrune:
 
 # ── kdam next --count ─────────────────────────────────────────────────────────
 
+
 class TestNextCount:
     def test_next_count_rotates_multiple_times(self, tmp_path, monkeypatch):
         """--count N should call rotate() N times."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config
-        from kdam.cli import cli
         import kdam.cli as cli_mod
+        from kdam.cli import cli
+        from kdam.config import load_config, save_config
 
         # Enable rotation
         cfg = load_config()
@@ -486,9 +516,9 @@ class TestNextCount:
     def test_next_stops_early_on_failure(self, tmp_path, monkeypatch):
         """If rotate() returns False, next --count should stop the loop."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config
-        from kdam.cli import cli
         import kdam.cli as cli_mod
+        from kdam.cli import cli
+        from kdam.config import load_config, save_config
 
         cfg = load_config()
         cfg.state.enabled = True
@@ -503,46 +533,59 @@ class TestNextCount:
 
 # ── _parse_duration / _fmt_duration ──────────────────────────────────────────
 
+
 class TestParseDuration:
-    @pytest.mark.parametrize("s,expected_s", [
-        ("30m",   1800),
-        ("3h",    10800),
-        ("2d",    172800),
-        ("1w",    604800),
-        ("1h30m", 5400),
-        ("2d12h", 2 * 86400 + 12 * 3600),
-    ])
+    @pytest.mark.parametrize(
+        "s,expected_s",
+        [
+            ("30m", 1800),
+            ("3h", 10800),
+            ("2d", 172800),
+            ("1w", 604800),
+            ("1h30m", 5400),
+            ("2d12h", 2 * 86400 + 12 * 3600),
+        ],
+    )
     def test_valid_durations(self, s, expected_s):
         from kdam.cli import _parse_duration
+
         td = _parse_duration(s)
         assert int(td.total_seconds()) == expected_s
 
     def test_invalid_duration_raises(self):
         from kdam.cli import _parse_duration
+
         with pytest.raises(ValueError):
             _parse_duration("badformat")
 
-    @pytest.mark.parametrize("secs,expected", [
-        (60,    "1m"),
-        (3600,  "1h"),
-        (7200,  "2h"),
-        (5400,  "1h 30m"),
-        (86400, "1d"),
-        (90000, "1d 1h"),
-    ])
+    @pytest.mark.parametrize(
+        "secs,expected",
+        [
+            (60, "1m"),
+            (3600, "1h"),
+            (7200, "2h"),
+            (5400, "1h 30m"),
+            (86400, "1d"),
+            (90000, "1d 1h"),
+        ],
+    )
     def test_fmt_duration(self, secs, expected):
         from datetime import timedelta
+
         from kdam.cli import _fmt_duration
+
         assert _fmt_duration(timedelta(seconds=secs)) == expected
 
 
 # ── kdam status ───────────────────────────────────────────────────────────────
+
 
 class TestStatusCommand:
     def test_status_runs_without_error(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["status"])
         assert result.exit_code == 0
@@ -551,8 +594,9 @@ class TestStatusCommand:
     def test_status_shows_frozen_when_set(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
-        from kdam.config import load_config, save_config
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
+
         cfg = load_config()
         cfg.state.frozen = True
         save_config(cfg)
@@ -565,8 +609,9 @@ class TestStatusCommand:
         """status must show interval, weekly day, and times within brackets."""
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
-        from kdam.config import load_config, save_config
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
+
         runner = CliRunner()
 
         # Interval mode
@@ -598,9 +643,9 @@ class TestStatusCommand:
         """Panic image stored in an external folder should not be counted as orphaned."""
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
-        from kdam.config import load_config, save_config
-        from kdam.db import ImageDB, ImageEntry, CropInfo
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
+        from kdam.db import CropInfo, ImageDB, ImageEntry
 
         # Register a panic image outside configured directories
         panic_file = tmp_path / "external_safe.png"
@@ -622,8 +667,8 @@ class TestStatusCommand:
         """status should display real desktop avatar when it differs from recorded state."""
         _patch_paths(tmp_path, monkeypatch)
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
-        from kdam.config import load_config, save_config
         from kdam.cli import cli
+        from kdam.config import load_config, save_config
 
         cfg = load_config()
         cfg.state.last_image_path = "/home/test/Pictures/recorded.png"
@@ -640,10 +685,12 @@ class TestStatusCommand:
 
 # ── kdam help ─────────────────────────────────────────────────────────────────
 
+
 class TestHelpCommand:
     def test_help_runs(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["help"])
         assert result.exit_code == 0
@@ -652,6 +699,7 @@ class TestHelpCommand:
     def test_help_specific_command(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["help", "log"])
         assert result.exit_code == 0
@@ -660,6 +708,7 @@ class TestHelpCommand:
     def test_help_unknown_command_shows_error(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["help", "doesnotexist"])
         assert result.exit_code == 0
@@ -667,6 +716,7 @@ class TestHelpCommand:
 
 
 # ── auto temp cleanup ─────────────────────────────────────────────────────────
+
 
 class TestAutoCleanupTempFiles:
     def test_cleanup_deletes_leftovers_preserves_panic(self, tmp_path, monkeypatch):
@@ -700,11 +750,12 @@ class TestAutoCleanupTempFiles:
 
 # ── shell completion helpers ──────────────────────────────────────────────────
 
+
 class TestShellCompletion:
     def test_complete_image_name_basename(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry
         from kdam.cli import _complete_image_name
+        from kdam.db import ImageDB, ImageEntry
 
         db = ImageDB()
         db.set("/path/to/thats-me_1.jpg", ImageEntry())
@@ -720,8 +771,8 @@ class TestShellCompletion:
 
     def test_complete_image_name_path(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.db import ImageDB, ImageEntry
         from kdam.cli import _complete_image_name
+        from kdam.db import ImageDB, ImageEntry
 
         db = ImageDB()
         img_path = str(tmp_path / "photo.jpg")
@@ -734,8 +785,8 @@ class TestShellCompletion:
 
     def test_complete_configured_dirs(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config, Directory
         from kdam.cli import _complete_configured_dirs
+        from kdam.config import Directory, load_config, save_config
 
         cfg = load_config()
         cfg.directories = [
@@ -761,7 +812,6 @@ class TestShellCompletion:
 
     def test_complete_config_key_and_value(self):
         from kdam.cli import _complete_config_key, _complete_config_value
-        from unittest.mock import MagicMock
 
         key_items = _complete_config_key(None, None, "rot")
         key_values = [it.value for it in key_items]
@@ -773,5 +823,3 @@ class TestShellCompletion:
         val_items = _complete_config_value(ctx, None, "da")
         val_values = [it.value for it in val_items]
         assert "daily" in val_values
-
-

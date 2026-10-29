@@ -1,4 +1,5 @@
 """cli_config.py — config group and subcommands."""
+
 from __future__ import annotations
 
 import json
@@ -155,7 +156,9 @@ def config_set(key: str, value: str) -> None:
                 val_norm = "deck"
 
             if val_norm not in ("sequential", "random", "weighted", "lru", "deck"):
-                console.print("[red]rotation.order must be: sequential | random | weighted | lru | deck[/red]")
+                console.print(
+                    "[red]rotation.order must be: sequential | random | weighted | lru | deck[/red]"
+                )
                 raise SystemExit(1)
             config.rotation.order = val_norm
             value = val_norm
@@ -163,6 +166,7 @@ def config_set(key: str, value: str) -> None:
         elif field == "interval":
             # Test duration format
             from ._cli_shared import _parse_duration
+
             try:
                 td = _parse_duration(value)
                 if int(td.total_seconds()) <= 0:
@@ -210,7 +214,9 @@ def config_set(key: str, value: str) -> None:
             for t in time_parts:
                 m = re.match(r"^(\d{1,2}):(\d{2})$", t)
                 if not m:
-                    console.print(f"[red]Invalid time format {t!r}. Expected HH:MM (e.g. 08:30, 14:00).[/red]")
+                    console.print(
+                        f"[red]Invalid time format {t!r}. Expected HH:MM (e.g. 08:30, 14:00).[/red]"
+                    )
                     raise SystemExit(1)
                 hh, mm = int(m.group(1)), int(m.group(2))
                 if not (0 <= hh <= 23 and 0 <= mm <= 59):
@@ -249,13 +255,16 @@ def config_set(key: str, value: str) -> None:
 
                 # Check current active image count and inform user if K > N
                 from .db import ImageDB
+
                 db = ImageDB()
                 active_n = len(db.active())
                 if active_n < k_val:
                     diff = k_val - active_n
                     console.print(
-                        f"[yellow]Notice: Currently {active_n} active image(s) registered (smaller than K={k_val}).[/yellow]\n"
-                        f"[dim]The entire pool of {active_n} image(s) will be used until at least {k_val} images "
+                        f"[yellow]Notice: Currently {active_n} active image(s) registered"
+                        f" (smaller than K={k_val}).[/yellow]\n"
+                        f"[dim]The entire pool of {active_n} image(s) will be used"
+                        f" until at least {k_val} images "
                         f"are present (add {diff} more image(s)).[/dim]"
                     )
             else:
@@ -264,7 +273,8 @@ def config_set(key: str, value: str) -> None:
         else:
             console.print(f"[red]Unknown key: {key}[/red]")
             console.print(
-                "[dim]Valid keys: rotation.mode | rotation.order | rotation.interval | rotation.interval_hours | "
+                "[dim]Valid keys: rotation.mode | rotation.order | rotation.interval"
+                " | rotation.interval_hours | "
                 "rotation.start_hour | rotation.times | rotation.weekday | rotation.lru_pool_size[/dim]"
             )
             raise SystemExit(1)

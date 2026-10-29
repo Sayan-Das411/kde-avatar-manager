@@ -1,4 +1,5 @@
 """Tests for kdam.config — load_config, save_config, dataclasses."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,14 +7,15 @@ from pathlib import Path
 
 def _patch_paths(tmp: Path, monkeypatch):
     import kdam.config as cfg
-    monkeypatch.setattr(cfg, "CONFIG_DIR",    tmp)
-    monkeypatch.setattr(cfg, "CONFIG_FILE",   tmp / "config.json")
-    monkeypatch.setattr(cfg, "IMAGES_FILE",   tmp / "images.json")
+
+    monkeypatch.setattr(cfg, "CONFIG_DIR", tmp)
+    monkeypatch.setattr(cfg, "CONFIG_FILE", tmp / "config.json")
+    monkeypatch.setattr(cfg, "IMAGES_FILE", tmp / "images.json")
     monkeypatch.setattr(cfg, "PROCESSED_DIR", tmp / "processed")
-    monkeypatch.setattr(cfg, "BACKUP_FILE",   tmp / "backup.png")
-    monkeypatch.setattr(cfg, "LOGS_DIR",      tmp / "logs")
-    monkeypatch.setattr(cfg, "LOG_FILE",      tmp / "logs" / "rotation.log")
-    monkeypatch.setattr(cfg, "_LOCK_FILE",    tmp / ".lock")
+    monkeypatch.setattr(cfg, "BACKUP_FILE", tmp / "backup.png")
+    monkeypatch.setattr(cfg, "LOGS_DIR", tmp / "logs")
+    monkeypatch.setattr(cfg, "LOG_FILE", tmp / "logs" / "rotation.log")
+    monkeypatch.setattr(cfg, "_LOCK_FILE", tmp / ".lock")
     cfg.ensure_dirs()
 
 
@@ -21,15 +23,17 @@ class TestLoadSaveConfig:
     def test_defaults_when_missing(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.config import load_config
+
         cfg = load_config()
         assert cfg.rotation.mode == "daily"
         assert cfg.directories == []
         assert cfg.panic.path is None
-        assert cfg.state.enabled is True   # rotation is ON by default
+        assert cfg.state.enabled is True  # rotation is ON by default
 
     def test_round_trip(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import load_config, save_config, Directory
+        from kdam.config import Directory, load_config, save_config
+
         cfg = load_config()
         cfg.rotation.mode = "interval"
         cfg.rotation.interval_hours = 4
@@ -49,6 +53,7 @@ class TestLoadSaveConfig:
         _patch_paths(tmp_path, monkeypatch)
         (tmp_path / "config.json").write_text("}{bad json")
         from kdam.config import load_config
+
         cfg = load_config()
         assert cfg.rotation.mode == "daily"
 
@@ -56,6 +61,7 @@ class TestLoadSaveConfig:
         """save_config must not leave a .tmp file behind."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam.config import load_config, save_config
+
         cfg = load_config()
         save_config(cfg)
         tmp_files = list(tmp_path.glob("*.tmp"))
@@ -64,6 +70,7 @@ class TestLoadSaveConfig:
     def test_panic_config_round_trip(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.config import load_config, save_config
+
         cfg = load_config()
         cfg.panic.path = "/home/user/safe.jpg"
         cfg.panic.crop = {"x": 10, "y": 20, "size": 100}
@@ -76,6 +83,7 @@ class TestLoadSaveConfig:
     def test_lru_and_deck_config_round_trip(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.config import load_config, save_config
+
         cfg = load_config()
         cfg.rotation.order = "lru"
         cfg.rotation.lru_pool_size = "15"
@@ -91,6 +99,7 @@ class TestLoadSaveConfig:
 class TestDirectory:
     def test_round_trip(self):
         from kdam.config import Directory
+
         d = Directory(path="/foo", recursive=True, enabled=False)
         d2 = Directory.from_dict(d.to_dict())
         assert d2.path == "/foo"
@@ -99,6 +108,7 @@ class TestDirectory:
 
     def test_defaults(self):
         from kdam.config import Directory
+
         d = Directory.from_dict({"path": "/bar"})
         assert d.recursive is False
         assert d.enabled is True

@@ -6,6 +6,7 @@
 4. Smoke: kdam --help exits 0 (verifies the installed entry point works)
 5. Smoke: kdam <subcommand> --help exits 0 for all major subcommands
 """
+
 from __future__ import annotations
 
 import json
@@ -16,11 +17,9 @@ from pathlib import Path
 import pytest
 
 hypothesis = pytest.importorskip("hypothesis")
-from hypothesis import HealthCheck, given, settings
-from hypothesis import strategies as st
-
-from helpers import _patch_paths
-
+from helpers import _patch_paths  # noqa: E402
+from hypothesis import HealthCheck, given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
 
 # ── Strategy helpers ──────────────────────────────────────────────────────────
 
@@ -28,7 +27,7 @@ from helpers import _patch_paths
 _json_scalars = st.one_of(
     st.none(),
     st.booleans(),
-    st.integers(min_value=-10**9, max_value=10**9),
+    st.integers(min_value=-(10**9), max_value=10**9),
     st.floats(allow_nan=False, allow_infinity=False),
     st.text(max_size=64),
 )
@@ -43,6 +42,7 @@ _json_values = st.recursive(
 
 
 # ── Fuzz: config parsing ───────────────────────────────────────────────────────
+
 
 class TestFuzzConfigParsing:
     """load_config() must never crash on any JSON, no matter how malformed."""
@@ -66,12 +66,14 @@ class TestFuzzConfigParsing:
         assert hasattr(result, "rotation")
         assert hasattr(result, "state")
 
-    @given(hours=st.one_of(
-        st.integers(min_value=-1000, max_value=1000),
-        st.floats(allow_nan=False, allow_infinity=False),
-        st.text(max_size=10),
-        st.none(),
-    ))
+    @given(
+        hours=st.one_of(
+            st.integers(min_value=-1000, max_value=1000),
+            st.floats(allow_nan=False, allow_infinity=False),
+            st.text(max_size=10),
+            st.none(),
+        )
+    )
     @settings(max_examples=150, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_interval_hours_always_clamped(self, tmp_path, monkeypatch, hours):
         """interval_hours from any JSON value must result in config.rotation.interval_hours >= 1."""
@@ -108,6 +110,7 @@ class TestFuzzConfigParsing:
 
 # ── Fuzz: _parse_duration ──────────────────────────────────────────────────────
 
+
 class TestFuzzParseDuration:
     """_parse_duration() must never return zero/negative for valid inputs,
     and must always raise ValueError for invalid inputs."""
@@ -119,15 +122,15 @@ class TestFuzzParseDuration:
     @settings(max_examples=100)
     def test_valid_duration_always_positive(self, n, unit):
         from kdam._cli_shared import _parse_duration
+
         result = _parse_duration(f"{n}{unit}")
         assert result.total_seconds() > 0
 
-    @given(s=st.text(max_size=20).filter(
-        lambda x: not any(c.isdigit() for c in x) and len(x.strip()) > 0
-    ))
+    @given(s=st.text(max_size=20).filter(lambda x: not any(c.isdigit() for c in x) and len(x.strip()) > 0))
     @settings(max_examples=100)
     def test_pure_text_raises_valueerror(self, s):
         from kdam._cli_shared import _parse_duration
+
         with pytest.raises(ValueError):
             _parse_duration(s)
 
@@ -137,8 +140,10 @@ class TestFuzzParseDuration:
     )
     @settings(max_examples=50)
     def test_compound_duration_correct(self, a, b):
-        from kdam._cli_shared import _parse_duration
         from datetime import timedelta
+
+        from kdam._cli_shared import _parse_duration
+
         result = _parse_duration(f"{a}h{b}m")
         expected = timedelta(hours=a, minutes=b)
         assert result == expected
@@ -146,21 +151,23 @@ class TestFuzzParseDuration:
 
 # ── Fuzz: _log_replace_path never corrupts unrelated lines ────────────────────
 
-class TestFuzzLogReplace:
 
+class TestFuzzLogReplace:
     @given(
         old=st.text(min_size=1, max_size=80, alphabet=st.characters(blacklist_characters="\n")),
         new=st.text(min_size=1, max_size=80, alphabet=st.characters(blacklist_characters="\n")),
         other_paths=st.lists(
             st.text(min_size=1, max_size=80, alphabet=st.characters(blacklist_characters="\n")),
-            min_size=0, max_size=5,
+            min_size=0,
+            max_size=5,
         ),
     )
     @settings(max_examples=200, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_replace_never_corrupts_other_entries(self, tmp_path, monkeypatch, old, new, other_paths):
         """_log_replace_path must only update lines whose path field exactly equals old."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam._cli_shared import _write_log_entry, _log_replace_path
+        from kdam._cli_shared import _log_replace_path, _write_log_entry
+
         # Clear log between hypothesis examples — state leaks across examples otherwise
         log_file = tmp_path / "logs" / "rotation.log"
         if log_file.exists():
@@ -171,10 +178,12 @@ class TestFuzzLogReplace:
             return  # old==new: replace is a no-op, asserting old is gone is wrong
         if "\r" in old or "\r" in new or any("\r" in p for p in other_paths):
             return  # \r is not valid in paths; splitlines() treats it as line ending
+
         # Skip paths with lone surrogates — they get sanitized by _write_log_entry
         # (the sanitized form won't equal old, so the "old gone" assertion is wrong)
         def _has_surrogate(s: str) -> bool:
             return any("\ud800" <= c <= "\udfff" for c in s)
+
         if _has_surrogate(old) or _has_surrogate(new) or any(_has_surrogate(p) for p in other_paths):
             return
         if any(old in p and p != old for p in other_paths):
@@ -189,10 +198,8 @@ class TestFuzzLogReplace:
         log_content = (tmp_path / "logs" / "rotation.log").read_text()
         # old must be gone (as an exact path field)
         from kdam._cli_shared import LOG_LINE_SEP
-        exact_old_lines = [
-            ln for ln in log_content.splitlines()
-            if ln.split(LOG_LINE_SEP, 1)[-1] == old
-        ]
+
+        exact_old_lines = [ln for ln in log_content.splitlines() if ln.split(LOG_LINE_SEP, 1)[-1] == old]
         assert exact_old_lines == [], f"old path still present: {exact_old_lines}"
 
         # other paths must be unchanged
@@ -204,6 +211,7 @@ class TestFuzzLogReplace:
 
 # ── Smoke tests: CLI binary ────────────────────────────────────────────────────
 
+
 class TestCLISmoke:
     """Verify the installed kdam entry point is functional — not just importable."""
 
@@ -212,10 +220,8 @@ class TestCLISmoke:
     def kdam_bin(cls):
         """Return path to kdam binary — skip if not installed."""
         import shutil
-        kdam = (
-            shutil.which("kdam")
-            or str(Path.home() / ".local" / "bin" / "kdam")
-        )
+
+        kdam = shutil.which("kdam") or str(Path.home() / ".local" / "bin" / "kdam")
         if not Path(kdam).exists():
             venv_kdam = Path.home() / ".kde-avatar-manager" / "venv" / "bin" / "kdam"
             if venv_kdam.exists():
@@ -247,31 +253,44 @@ class TestCLISmoke:
         """kdam --version must exit 0 and print a version string."""
         result = self._run(kdam_bin, "--version")
         assert result.returncode == 0
-        assert any(c.isdigit() for c in result.stdout + result.stderr), \
+        assert any(c.isdigit() for c in result.stdout + result.stderr), (
             "kdam --version produced no version number"
+        )
 
-    @pytest.mark.parametrize("subcmd", [
-        "add", "list", "next", "status", "enable", "disable",
-        "backup", "dirs", "panic", "log",
-    ])
+    @pytest.mark.parametrize(
+        "subcmd",
+        [
+            "add",
+            "list",
+            "next",
+            "status",
+            "enable",
+            "disable",
+            "backup",
+            "dirs",
+            "panic",
+            "log",
+        ],
+    )
     def test_subcommand_help_exits_zero(self, kdam_bin, subcmd):
         """kdam <subcmd> --help must exit 0 for every major subcommand."""
         result = self._run(kdam_bin, subcmd, "--help")
-        assert result.returncode == 0, (
-            f"kdam {subcmd} --help exited {result.returncode}:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"kdam {subcmd} --help exited {result.returncode}:\n{result.stderr}"
 
     def test_no_crash_on_unknown_flag(self, kdam_bin):
         """kdam with an unknown flag must exit non-zero but not crash with a traceback."""
         result = self._run(kdam_bin, "--this-flag-does-not-exist")
         assert result.returncode != 0
-        assert "Traceback" not in result.stderr, \
+        assert "Traceback" not in result.stderr, (
             "Unhandled exception on unknown flag — should be a clean Click error"
+        )
 
     def test_import_is_clean(self):
         """'python -m kdam' must not crash on import (catches missing __main__ etc.)."""
         result = subprocess.run(
             [sys.executable, "-c", "import kdam; import kdam.cli; import kdam.rotator"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         assert result.returncode == 0, f"import kdam failed:\n{result.stderr}"

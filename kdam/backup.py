@@ -9,6 +9,7 @@ Handles creating portable backup archives containing:
 Also handles smart restoration with automatic home directory remapping
 (e.g. /home/mit -> /home/newuser) and extraction of bundled images.
 """
+
 from __future__ import annotations
 
 import io
@@ -118,7 +119,6 @@ def create_backup(
     return out
 
 
-
 def inspect_backup(archive_path: str | Path) -> dict[str, Any]:
     """Read and return the manifest and contents of a backup archive."""
     p = Path(archive_path).expanduser().resolve()
@@ -204,7 +204,7 @@ def restore_backup(
         # 3. Extract bundled images and map paths
         #    Pre-scan the archive first to detect filename collisions (two images
         #    from different directories sharing the same basename).
-        path_mapping: dict[str, str] = {}   # map_key -> absolute new path on disk
+        path_mapping: dict[str, str] = {}  # map_key -> absolute new path on disk
         # conflicting_names already initialized above (before tarfile block)
 
         if has_images:
@@ -213,6 +213,7 @@ def restore_backup(
             # has_images=True in manifest but image_count=0 means the backup was
             # created with --include-images on an empty DB: no directory needed.
             from collections import Counter
+
             _fname_count: Counter = Counter()
             _actual_image_members = []
             for m in tar.getmembers():
@@ -241,7 +242,10 @@ def restore_backup(
             if conflicting_names:
                 print(
                     "\n⚠  Filename conflict(s) detected during restore:\n"
-                    + "".join(f"   • '{n}' exists in multiple source directories\n" for n in sorted(conflicting_names))
+                    + "".join(
+                        f"   • '{n}' exists in multiple source directories\n"
+                        for n in sorted(conflicting_names)
+                    )
                     + "   Conflicting files have been extracted with their index prefix\n"
                     + "   (e.g. '0001_photo.jpg', '0002_photo.jpg') to avoid overwriting each other.\n"
                     + "   Please rename the copies you want to keep, then run:\n"
@@ -251,15 +255,17 @@ def restore_backup(
             for member in tar.getmembers():
                 if member.name.startswith("images/") and (member.isfile() or member.isreg()):
                     fname = member.name.split("/", 1)[1]
-                    clean_name = fname[5:] if (len(fname) > 5 and fname[:4].isdigit() and fname[4] == "_") else fname
+                    clean_name = (
+                        fname[5:] if (len(fname) > 5 and fname[:4].isdigit() and fname[4] == "_") else fname
+                    )
 
                     if clean_name in conflicting_names:
                         # Use the full indexed name so both files land on disk distinctly
-                        dest_name = Path(fname).name   # basename only — prevent traversal
-                        map_key   = fname               # unique key per archive entry
+                        dest_name = Path(fname).name  # basename only — prevent traversal
+                        map_key = fname  # unique key per archive entry
                     else:
                         dest_name = Path(clean_name).name  # basename only — prevent traversal
-                        map_key   = clean_name
+                        map_key = clean_name
 
                     dest_file = (img_dest_dir / dest_name).resolve()
                     # Guard: ensure resolved path stays inside the target directory.
@@ -325,4 +331,3 @@ def restore_backup(
             f"{', '.join(sorted(conflicting_names))} — see warnings above.)"
         )
     return True, msg
-

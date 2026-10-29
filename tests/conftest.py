@@ -6,6 +6,7 @@ around every test session.  This is the last line of defence: even if a test
 leaks a save_config() or log-write call to the real data directory, the
 restore step at session teardown puts everything back exactly as it was.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -14,11 +15,11 @@ from pathlib import Path
 import pytest
 
 _REAL_DATA_DIR = Path.home() / ".kde-avatar-manager"
-_REAL_CONFIG   = _REAL_DATA_DIR / "config.json"
-_REAL_LOG      = _REAL_DATA_DIR / "logs" / "rotation.log"
-_REAL_IMAGES   = _REAL_DATA_DIR / "images.json"
-_REAL_BACKUP   = _REAL_DATA_DIR / "backup.png"
-_REAL_PROC     = _REAL_DATA_DIR / "processed"
+_REAL_CONFIG = _REAL_DATA_DIR / "config.json"
+_REAL_LOG = _REAL_DATA_DIR / "logs" / "rotation.log"
+_REAL_IMAGES = _REAL_DATA_DIR / "images.json"
+_REAL_BACKUP = _REAL_DATA_DIR / "backup.png"
+_REAL_PROC = _REAL_DATA_DIR / "processed"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -32,11 +33,11 @@ def _guard_live_data(tmp_path_factory):
     snap = tmp_path_factory.mktemp("_live_data_snapshot")
 
     # ── snapshot ──────────────────────────────────────────────────────────────
-    snap_config  = snap / "config.json"
-    snap_log     = snap / "rotation.log"
-    snap_images  = snap / "images.json"
-    snap_backup  = snap / "backup.png"
-    snap_proc    = snap / "processed"
+    snap_config = snap / "config.json"
+    snap_log = snap / "rotation.log"
+    snap_images = snap / "images.json"
+    snap_backup = snap / "backup.png"
+    snap_proc = snap / "processed"
 
     if _REAL_CONFIG.exists():
         shutil.copy2(_REAL_CONFIG, snap_config)
@@ -49,13 +50,13 @@ def _guard_live_data(tmp_path_factory):
     if _REAL_PROC.exists():
         shutil.copytree(_REAL_PROC, snap_proc)
 
-    yield   # ← tests run here
+    yield  # ← tests run here
 
     # ── restore ───────────────────────────────────────────────────────────────
     if snap_config.exists():
         shutil.copy2(snap_config, _REAL_CONFIG)
     elif _REAL_CONFIG.exists():
-        _REAL_CONFIG.unlink()   # was absent before tests; remove if tests created it
+        _REAL_CONFIG.unlink()  # was absent before tests; remove if tests created it
 
     if snap_log.exists():
         shutil.copy2(snap_log, _REAL_LOG)

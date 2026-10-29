@@ -13,18 +13,17 @@ hardware that is not available in CI):
 A second class tests the dirs suspend → resume → rotate flow, which exercises
 the interaction between cli_dirs.py and the rotator.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
+from helpers import _patch_paths
 from PIL import Image
 
-from helpers import _patch_paths
-
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_png(path: Path, size: tuple = (128, 128), color: tuple = (100, 150, 200)) -> Path:
     Image.new("RGB", size, color=color).save(str(path), "PNG")
@@ -32,7 +31,8 @@ def _make_png(path: Path, size: tuple = (128, 128), color: tuple = (100, 150, 20
 
 
 def _make_config(dirs, tmp_path):
-    from kdam.config import Config, RotationConfig, PanicConfig, State
+    from kdam.config import Config, PanicConfig, RotationConfig, State
+
     return Config(
         rotation=RotationConfig(mode="daily", order="random", interval_hours=24),
         panic=PanicConfig(),
@@ -43,7 +43,8 @@ def _make_config(dirs, tmp_path):
 
 def _configure_entry(db, img_path: str) -> None:
     """Simulate 'kdam add' by writing a CropInfo into the DB for img_path."""
-    from kdam.db import ImageEntry, CropInfo
+    from kdam.db import CropInfo, ImageEntry
+
     entry = ImageEntry(
         configured=True,
         enabled=True,
@@ -56,14 +57,14 @@ def _configure_entry(db, img_path: str) -> None:
 
 # ── End-to-end: scan → configure → rotate ─────────────────────────────────────
 
-class TestScanConfigureRotate:
 
+class TestScanConfigureRotate:
     def test_scan_discovers_images(self, tmp_path, monkeypatch):
         """scanner.scan() must add new image files to the DB as unconfigured entries."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam import scanner
-        from kdam.db import ImageDB
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -80,15 +81,15 @@ class TestScanConfigureRotate:
         entries = db.all()
         assert len(entries) == 2
         for e in entries.values():
-            assert not e.configured   # scan registers but does NOT configure
+            assert not e.configured  # scan registers but does NOT configure
             assert not e.enabled
 
     def test_scan_recursive(self, tmp_path, monkeypatch):
         """Recursive scan discovers images in subdirectories."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam import scanner
-        from kdam.db import ImageDB
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         sub = img_dir / "sub"
@@ -106,8 +107,8 @@ class TestScanConfigureRotate:
         """Non-recursive scan must not descend into subdirectories."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam import scanner
-        from kdam.db import ImageDB
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         sub = img_dir / "sub"
@@ -125,8 +126,8 @@ class TestScanConfigureRotate:
         """Files that are not valid images must be silently skipped."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam import scanner
-        from kdam.db import ImageDB
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -143,10 +144,10 @@ class TestScanConfigureRotate:
     def test_full_pipeline_rotate_sets_avatar(self, tmp_path, monkeypatch):
         """Full scan→configure→rotate pipeline: avatar is set and state updated."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner, rotator
         from kdam import kde as kde_mod
-        from kdam.db import ImageDB
+        from kdam import rotator, scanner
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -173,14 +174,14 @@ class TestScanConfigureRotate:
     def test_full_pipeline_multiple_images_rotates_all(self, tmp_path, monkeypatch):
         """With N images configured, N repeated rotations should each succeed."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner, rotator
         from kdam import kde as kde_mod
-        from kdam.db import ImageDB
+        from kdam import rotator, scanner
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
-        imgs = [_make_png(img_dir / f"p{i}.png", color=(i*30, i*20, 100)) for i in range(1, 5)]
+        imgs = [_make_png(img_dir / f"p{i}.png", color=(i * 30, i * 20, 100)) for i in range(1, 5)]
 
         dirs = [Directory(path=str(img_dir), recursive=False)]
         config = _make_config(dirs, tmp_path)
@@ -202,10 +203,10 @@ class TestScanConfigureRotate:
     def test_state_persisted_after_rotation(self, tmp_path, monkeypatch):
         """Config state (last_image_path, last_rotation) must survive save/reload."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner, rotator
         from kdam import kde as kde_mod
-        from kdam.db import ImageDB
+        from kdam import rotator, scanner
         from kdam.config import Directory, load_config
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -229,8 +230,8 @@ class TestScanConfigureRotate:
         """Scanning the same directory twice must not add duplicate DB entries."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam import scanner
-        from kdam.db import ImageDB
         from kdam.config import Directory
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -247,16 +248,17 @@ class TestScanConfigureRotate:
 
 # ── End-to-end: dirs suspend → resume → rotate ────────────────────────────────
 
-class TestDirsSuspendResumeRotate:
 
+class TestDirsSuspendResumeRotate:
     def test_suspend_pauses_images(self, tmp_path, monkeypatch):
         """After dirs_suspend, all images from that dir should be disabled."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner
-        from kdam.db import ImageDB
-        from kdam.config import Directory, save_config
-        from kdam.cli_dirs import dirs_suspend
         from click.testing import CliRunner
+
+        from kdam import scanner
+        from kdam.cli_dirs import dirs_suspend
+        from kdam.config import Directory, save_config
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -283,11 +285,12 @@ class TestDirsSuspendResumeRotate:
     def test_resume_restores_images(self, tmp_path, monkeypatch):
         """After dirs_resume, images suspended by dirs_suspend must be re-enabled."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner
-        from kdam.db import ImageDB
-        from kdam.config import Directory, save_config
-        from kdam.cli_dirs import dirs_suspend, dirs_resume
         from click.testing import CliRunner
+
+        from kdam import scanner
+        from kdam.cli_dirs import dirs_resume, dirs_suspend
+        from kdam.config import Directory, save_config
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -315,12 +318,13 @@ class TestDirsSuspendResumeRotate:
     def test_rotate_skips_suspended_images(self, tmp_path, monkeypatch):
         """Images suspended by dirs_suspend must not appear in rotation."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import scanner, rotator
-        from kdam import kde as kde_mod
-        from kdam.db import ImageDB
-        from kdam.config import Directory, save_config
-        from kdam.cli_dirs import dirs_suspend
         from click.testing import CliRunner
+
+        from kdam import kde as kde_mod
+        from kdam import rotator, scanner
+        from kdam.cli_dirs import dirs_suspend
+        from kdam.config import Directory, save_config
+        from kdam.db import ImageDB
 
         img_dir = tmp_path / "photos"
         img_dir.mkdir()
@@ -342,5 +346,5 @@ class TestDirsSuspendResumeRotate:
         with patch.object(kde_mod, "_user_iface", return_value=mock_iface):
             result = rotator.rotate(config, db2, quiet=True)
 
-        assert result is None   # pool empty after suspend
+        assert result is None  # pool empty after suspend
         mock_iface.SetIconFile.assert_not_called()

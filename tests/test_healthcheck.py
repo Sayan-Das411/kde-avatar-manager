@@ -1,4 +1,5 @@
 """Tests for newly fixed edge-cases identified in the healthcheck audit."""
+
 from __future__ import annotations
 
 import json
@@ -7,12 +8,9 @@ import tarfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
-from PIL import Image
-
 from helpers import _patch_paths  # shared: redirects all paths to tmp, silences notify
-
+from PIL import Image
 
 # ── shared helpers ────────────────────────────────────────────────────────────
 
@@ -24,13 +22,15 @@ def _make_png(path: Path, size=(64, 64)) -> Path:
 
 # ── H3: corrupt config recovery ──────────────────────────────────────────────
 
+
 class TestCorruptConfigRecovery:
     def test_corrupt_json_renames_to_dot_corrupt(self, tmp_path, monkeypatch):
         """A corrupt config.json should be renamed .json.corrupt, not silently lost."""
         import kdam.config as cfg
-        monkeypatch.setattr(cfg, "CONFIG_DIR",   tmp_path)
-        monkeypatch.setattr(cfg, "CONFIG_FILE",  tmp_path / "config.json")
-        monkeypatch.setattr(cfg, "_LOCK_FILE",   tmp_path / ".lock")
+
+        monkeypatch.setattr(cfg, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(cfg, "CONFIG_FILE", tmp_path / "config.json")
+        monkeypatch.setattr(cfg, "_LOCK_FILE", tmp_path / ".lock")
 
         # Write a corrupt file
         (tmp_path / "config.json").write_text("{ invalid json !!!")
@@ -45,9 +45,10 @@ class TestCorruptConfigRecovery:
 
     def test_valid_config_loads_normally(self, tmp_path, monkeypatch):
         import kdam.config as cfg
-        monkeypatch.setattr(cfg, "CONFIG_DIR",   tmp_path)
-        monkeypatch.setattr(cfg, "CONFIG_FILE",  tmp_path / "config.json")
-        monkeypatch.setattr(cfg, "_LOCK_FILE",   tmp_path / ".lock")
+
+        monkeypatch.setattr(cfg, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(cfg, "CONFIG_FILE", tmp_path / "config.json")
+        monkeypatch.setattr(cfg, "_LOCK_FILE", tmp_path / ".lock")
 
         original = cfg.Config()
         original.rotation.interval_hours = 4
@@ -61,8 +62,9 @@ class TestCorruptDBRecovery:
         """A corrupt images.json should be renamed .json.corrupt, not silently lost."""
         import kdam.config as cfg
         import kdam.db as db_mod
-        monkeypatch.setattr(cfg, "CONFIG_DIR",   tmp_path)
-        monkeypatch.setattr(cfg, "_LOCK_FILE",   tmp_path / ".lock")
+
+        monkeypatch.setattr(cfg, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(cfg, "_LOCK_FILE", tmp_path / ".lock")
         monkeypatch.setattr(db_mod, "IMAGES_FILE", tmp_path / "images.json")
 
         (tmp_path / "images.json").write_text("not valid json at all !!!")
@@ -74,13 +76,14 @@ class TestCorruptDBRecovery:
 
 # ── H2: sequential rotation is deterministic ─────────────────────────────────
 
+
 class TestSequentialRotationSort:
     def test_sequential_order_is_alphabetical(self, tmp_path, monkeypatch):
         """Sequential rotation must follow alphabetical order, not insertion order."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam.config import Config, load_config, save_config
-        from kdam.db import ImageDB, ImageEntry
         from kdam import rotator
+        from kdam.config import Config
+        from kdam.db import ImageDB, ImageEntry
 
         db = ImageDB()
         # Insert in reverse alphabetical order
@@ -92,9 +95,9 @@ class TestSequentialRotationSort:
         config.rotation.order = "sequential"
         config.state.current_index = 0
 
-        first  = rotator.get_next_image(config, db)
+        first = rotator.get_next_image(config, db)
         second = rotator.get_next_image(config, db)
-        third  = rotator.get_next_image(config, db)
+        third = rotator.get_next_image(config, db)
 
         names = [Path(p).name for p in [first, second, third] if p]
         assert names == sorted(names), f"Expected alphabetical order, got: {names}"
@@ -102,42 +105,51 @@ class TestSequentialRotationSort:
 
 # ── H1: zip-slip prevention ───────────────────────────────────────────────────
 
+
 class TestZipSlipPrevention:
     def test_traversal_path_in_archive_is_blocked(self, tmp_path, monkeypatch):
         """Malicious tar entries with ../ should not escape the target directory."""
-        import kdam.config as cfg
         import kdam.backup as bk
-        monkeypatch.setattr(cfg, "CONFIG_DIR",   tmp_path)
-        monkeypatch.setattr(cfg, "CONFIG_FILE",  tmp_path / "config.json")
-        monkeypatch.setattr(cfg, "IMAGES_FILE",  tmp_path / "images.json")
-        monkeypatch.setattr(cfg, "BACKUP_FILE",  tmp_path / "backup.png")
-        monkeypatch.setattr(cfg, "_LOCK_FILE",   tmp_path / ".lock")
-        monkeypatch.setattr(bk, "CONFIG_DIR",    tmp_path)
-        monkeypatch.setattr(bk, "CONFIG_FILE",   tmp_path / "config.json")
-        monkeypatch.setattr(bk, "IMAGES_FILE",   tmp_path / "images.json")
-        monkeypatch.setattr(bk, "BACKUP_FILE",   tmp_path / "backup.png")
+        import kdam.config as cfg
+
+        monkeypatch.setattr(cfg, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(cfg, "CONFIG_FILE", tmp_path / "config.json")
+        monkeypatch.setattr(cfg, "IMAGES_FILE", tmp_path / "images.json")
+        monkeypatch.setattr(cfg, "BACKUP_FILE", tmp_path / "backup.png")
+        monkeypatch.setattr(cfg, "_LOCK_FILE", tmp_path / ".lock")
+        monkeypatch.setattr(bk, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(bk, "CONFIG_FILE", tmp_path / "config.json")
+        monkeypatch.setattr(bk, "IMAGES_FILE", tmp_path / "images.json")
+        monkeypatch.setattr(bk, "BACKUP_FILE", tmp_path / "backup.png")
 
         # Build a malicious archive with a traversal entry
         evil_archive = tmp_path / "evil.tar.gz"
-        victim_file  = tmp_path / "victim.txt"
+        victim_file = tmp_path / "victim.txt"
         victim_file.write_text("original")
 
         import io
+
         with tarfile.open(str(evil_archive), "w:gz") as tf:
             # Write a minimal manifest
-            manifest = json.dumps({
-                "version": 1, "created_at": "2024-01-01",
-                "original_home": str(Path.home()), "include_images": True,
-                "image_count": 1, "directories": [], "panic_path": None,
-                "config_only": False,
-            }).encode()
+            manifest = json.dumps(
+                {
+                    "version": 1,
+                    "created_at": "2024-01-01",
+                    "original_home": str(Path.home()),
+                    "include_images": True,
+                    "image_count": 1,
+                    "directories": [],
+                    "panic_path": None,
+                    "config_only": False,
+                }
+            ).encode()
             ti = tarfile.TarInfo(name="kdam_manifest.json")
             ti.size = len(manifest)
             tf.addfile(ti, io.BytesIO(manifest))
 
             # Malicious image entry attempting directory traversal
             payload = b"pwned"
-            rel     = os.path.relpath(str(victim_file), str(tmp_path / "images"))
+            rel = os.path.relpath(str(victim_file), str(tmp_path / "images"))
             ti2 = tarfile.TarInfo(name=f"images/{rel}")
             ti2.size = len(payload)
             tf.addfile(ti2, io.BytesIO(payload))
@@ -151,6 +163,7 @@ class TestZipSlipPrevention:
 
 
 # ── Scanner: symlink safety ───────────────────────────────────────────────────
+
 
 class TestSymlinkSafety:
     def test_recursive_scan_does_not_follow_symlinks(self, tmp_path):
@@ -173,11 +186,12 @@ class TestSymlinkSafety:
 
 # ── Dirs commands ─────────────────────────────────────────────────────────────
 
+
 class TestDirsEditCommand:
     def test_dirs_edit_sets_recursive(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
-        from kdam.config import load_config, save_config, Config, Directory
+        from kdam.config import Directory, load_config, save_config
 
         d = tmp_path / "pics"
         d.mkdir()
@@ -194,7 +208,7 @@ class TestDirsEditCommand:
     def test_dirs_remove_clears_directory(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
-        from kdam.config import load_config, save_config, Config, Directory
+        from kdam.config import Directory, load_config, save_config
 
         d = tmp_path / "pics"
         d.mkdir()
@@ -211,10 +225,12 @@ class TestDirsEditCommand:
 
 # ── Panic operations ──────────────────────────────────────────────────────────
 
+
 class TestPanicCommands:
     def test_panic_show_no_panic_set(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
+
         runner = CliRunner()
         result = runner.invoke(cli, ["panic", "show"])
         assert result.exit_code == 0
@@ -224,6 +240,7 @@ class TestPanicCommands:
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
         from kdam.config import load_config, save_config
+
         cfg = load_config()
         cfg.panic.path = str(tmp_path / "nonexistent.jpg")
         save_config(cfg)
@@ -237,14 +254,15 @@ class TestPanicCommands:
         """panic reset falls back to backup.png when no explicit panic image is set."""
         _patch_paths(tmp_path, monkeypatch)
         from kdam.cli import cli
-        from kdam.config import load_config
 
         # Provide a real backup.png but no panic.path
         backup = tmp_path / "backup.png"
         _make_png(backup, size=(256, 256))
 
-        with patch("kdam.kde.set_avatar", return_value=True), \
-             patch("kdam.kde.backup_current_avatar", return_value=True):
+        with (
+            patch("kdam.kde.set_avatar", return_value=True),
+            patch("kdam.kde.backup_current_avatar", return_value=True),
+        ):
             runner = CliRunner()
             result = runner.invoke(cli, ["panic", "reset"])
 
@@ -254,12 +272,14 @@ class TestPanicCommands:
 
 # ── Config corruption guard: save_config cleans up .tmp on error ──────────────
 
+
 class TestSaveConfigTempCleanup:
     def test_no_tmp_file_left_on_disk_after_success(self, tmp_path, monkeypatch):
         import kdam.config as cfg
-        monkeypatch.setattr(cfg, "CONFIG_DIR",   tmp_path)
-        monkeypatch.setattr(cfg, "CONFIG_FILE",  tmp_path / "config.json")
-        monkeypatch.setattr(cfg, "_LOCK_FILE",   tmp_path / ".lock")
+
+        monkeypatch.setattr(cfg, "CONFIG_DIR", tmp_path)
+        monkeypatch.setattr(cfg, "CONFIG_FILE", tmp_path / "config.json")
+        monkeypatch.setattr(cfg, "_LOCK_FILE", tmp_path / ".lock")
 
         cfg.save_config(cfg.Config())
         assert not (tmp_path / "config.tmp").exists()
@@ -268,23 +288,27 @@ class TestSaveConfigTempCleanup:
 
 # ── New feature: kdam next --dry-run ─────────────────────────────────────────
 
+
 class TestNextDryRun:
     def test_dry_run_shows_candidate_without_rotating(self, tmp_path, monkeypatch):
         """--dry-run prints the next image without changing state."""
         from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         # Add a configured image
-        import kdam.db as db_mod
-        from kdam.db import ImageDB, ImageEntry, CropInfo
+        from kdam.db import CropInfo, ImageDB, ImageEntry
+
         img = _make_png(tmp_path / "test.png")
         db = ImageDB()
-        db.set(str(img), ImageEntry(configured=True, enabled=True, weight=1.0,
-                                    crop=CropInfo(x=0, y=0, size=64)))
+        db.set(
+            str(img), ImageEntry(configured=True, enabled=True, weight=1.0, crop=CropInfo(x=0, y=0, size=64))
+        )
         db.save()
 
         # Mock get_next_image to return our image path
         import kdam.rotator as rot_mod
+
         monkeypatch.setattr(rot_mod, "get_next_image", lambda cfg, db: str(img))
         # rotate should NOT be called
         rotate_called = []
@@ -299,9 +323,11 @@ class TestNextDryRun:
     def test_dry_run_no_images_shows_warning(self, tmp_path, monkeypatch):
         """--dry-run with empty pool prints a warning."""
         from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         import kdam.rotator as rot_mod
+
         monkeypatch.setattr(rot_mod, "get_next_image", lambda cfg, db: None)
 
         runner = CliRunner()
@@ -312,11 +338,13 @@ class TestNextDryRun:
 
 # ── New feature: kdam remove --all-unconfigured ───────────────────────────────
 
+
 class TestRemoveAllUnconfigured:
     def test_removes_all_unconfigured_with_confirm(self, tmp_path, monkeypatch):
         """--all-unconfigured removes all images with configured=False."""
         from kdam.cli import cli
         from kdam.db import ImageDB, ImageEntry
+
         _patch_paths(tmp_path, monkeypatch)
 
         img1 = _make_png(tmp_path / "a.png")
@@ -343,6 +371,7 @@ class TestRemoveAllUnconfigured:
         """--all-unconfigured with none unconfigured prints green message."""
         from kdam.cli import cli
         from kdam.db import ImageDB, ImageEntry
+
         _patch_paths(tmp_path, monkeypatch)
 
         img = _make_png(tmp_path / "configured.png")
@@ -363,6 +392,7 @@ class TestRemoveAllUnconfigured:
         """
         from kdam.cli import cli
         from kdam.db import ImageDB, ImageEntry
+
         _patch_paths(tmp_path, monkeypatch)
 
         img1 = _make_png(tmp_path / "del1.png")
@@ -376,9 +406,7 @@ class TestRemoveAllUnconfigured:
         db.save()
 
         runner = CliRunner()
-        result = runner.invoke(
-            cli, ["remove", "--all-unconfigured", "--delete-file"], input="y\n"
-        )
+        result = runner.invoke(cli, ["remove", "--all-unconfigured", "--delete-file"], input="y\n")
         assert result.exit_code == 0, result.output
 
         # Files must be gone from disk
@@ -396,6 +424,7 @@ class TestRemoveAllUnconfigured:
         """Without --delete-file, source files must remain on disk after registry removal."""
         from kdam.cli import cli
         from kdam.db import ImageDB, ImageEntry
+
         _patch_paths(tmp_path, monkeypatch)
 
         img = _make_png(tmp_path / "stays.png")
@@ -416,18 +445,21 @@ class TestRemoveAllUnconfigured:
 
 # ── New feature: orphaned images in kdam status ───────────────────────────────
 
+
 class TestOrphanedStatus:
     def test_orphaned_images_shown_in_status(self, tmp_path, monkeypatch):
         """status shows orphaned count when images exist outside configured dirs."""
         from kdam.cli import cli
-        from kdam.db import ImageDB, ImageEntry, CropInfo
+        from kdam.db import CropInfo, ImageDB, ImageEntry
+
         _patch_paths(tmp_path, monkeypatch)
 
         # Image is NOT under any configured directory → orphaned
         img = _make_png(tmp_path / "orphan.png")
         db = ImageDB()
-        db.set(str(img), ImageEntry(configured=True, enabled=True, weight=1.0,
-                                    crop=CropInfo(x=0, y=0, size=64)))
+        db.set(
+            str(img), ImageEntry(configured=True, enabled=True, weight=1.0, crop=CropInfo(x=0, y=0, size=64))
+        )
         db.save()
 
         monkeypatch.setattr("kdam.cli._timer_active", lambda: False)
@@ -440,14 +472,17 @@ class TestOrphanedStatus:
 
 # ── New feature: backup restore auto-creates --images-dir ────────────────────
 
+
 class TestBackupRestoreAutoCreateDir:
     def test_restore_creates_missing_images_dir(self, tmp_path, monkeypatch):
         """backup restore --images-dir creates the target dir if it doesn't exist."""
         from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         # Create a minimal backup archive
         import kdam.backup as bk
+
         archive = tmp_path / "test_backup.tar.gz"
         bk.create_backup(str(archive), include_images=False, config_only=True)
 
@@ -455,20 +490,19 @@ class TestBackupRestoreAutoCreateDir:
         assert not new_dir.exists()
 
         runner = CliRunner()
-        result = runner.invoke(cli, [
-            "backup", "restore", str(archive),
-            "--images-dir", str(new_dir), "--force"
-        ])
+        result = runner.invoke(
+            cli, ["backup", "restore", str(archive), "--images-dir", str(new_dir), "--force"]
+        )
         assert result.exit_code == 0, result.output
         assert new_dir.exists(), "restore should auto-create --images-dir"
 
 
 # ── Integration: enable / disable / toggle with mocked systemctl ─────────────
 
+
 class TestEnableDisableToggle:
     def _make_systemctl_mock(self, returncode=0):
         """Return a mock CompletedProcess for systemctl calls."""
-        import subprocess
         mock = MagicMock()
         mock.returncode = returncode
         mock.stdout = ""
@@ -477,9 +511,11 @@ class TestEnableDisableToggle:
 
     def test_enable_writes_systemd_files_and_calls_systemctl(self, tmp_path, monkeypatch):
         from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         systemd_calls = []
+
         def fake_systemd(*args):
             systemd_calls.append(args)
             return self._make_systemctl_mock(0)
@@ -497,8 +533,9 @@ class TestEnableDisableToggle:
         assert any("enable" in c for c in all_calls)
 
     def test_disable_stops_timer_and_updates_state(self, tmp_path, monkeypatch):
-        from kdam.cli import cli
         import kdam.config as cfg_mod
+        from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         # Set rotation as enabled
@@ -507,6 +544,7 @@ class TestEnableDisableToggle:
         cfg_mod.save_config(cfg)
 
         systemd_calls = []
+
         def fake_systemd(*args):
             systemd_calls.append(args)
             return self._make_systemctl_mock(0)
@@ -525,8 +563,9 @@ class TestEnableDisableToggle:
         assert not cfg2.state.enabled
 
     def test_toggle_enables_when_disabled(self, tmp_path, monkeypatch):
-        from kdam.cli import cli
         import kdam.config as cfg_mod
+        from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         cfg = cfg_mod.load_config()
@@ -546,8 +585,9 @@ class TestEnableDisableToggle:
         assert cfg2.state.enabled
 
     def test_toggle_unfreezes_when_frozen(self, tmp_path, monkeypatch):
-        from kdam.cli import cli
         import kdam.config as cfg_mod
+        from kdam.cli import cli
+
         _patch_paths(tmp_path, monkeypatch)
 
         cfg = cfg_mod.load_config()

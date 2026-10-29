@@ -1,4 +1,5 @@
 """Image registry — stores per-image crop metadata and state."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +11,7 @@ from pathlib import Path
 from .config import IMAGES_FILE, _db_lock, ensure_dirs
 
 # ── Data classes ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class CropInfo:
@@ -27,12 +29,12 @@ class CropInfo:
 
 @dataclass
 class ImageEntry:
-    configured: bool = False         # Has crop been set by the user?
-    enabled: bool = False            # Active in rotation pool?
-    weight: float = 1.0              # For weighted-random mode
+    configured: bool = False  # Has crop been set by the user?
+    enabled: bool = False  # Active in rotation pool?
+    weight: float = 1.0  # For weighted-random mode
     crop: CropInfo | None = None
-    last_used: str | None = None        # ISO-8601 datetime
-    suspended_by_dir: bool = False         # Disabled by `kdam dirs suspend`, not by the user
+    last_used: str | None = None  # ISO-8601 datetime
+    suspended_by_dir: bool = False  # Disabled by `kdam dirs suspend`, not by the user
 
     def to_dict(self) -> dict:
         return {
@@ -58,6 +60,7 @@ class ImageEntry:
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
+
 
 class ImageDB:
     """JSON-backed registry of managed avatar images.

@@ -9,17 +9,17 @@ Tests cover:
   - uninstall cleans RC file lines (_KDAM_COMPLETE, # kdam, etc.)
   - EditorQuit typed sentinel: singleton identity, repr, type annotation
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock
 
 from click.testing import CliRunner
-
 from helpers import _patch_paths
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 def _fake_install(tmp_path: Path) -> dict:
     """Create the files that install.sh would create, under tmp_path."""
@@ -29,7 +29,7 @@ def _fake_install(tmp_path: Path) -> dict:
 
     bin_path = tmp_path / "local_bin" / "kdam"
     bin_path.parent.mkdir(parents=True)
-    bin_path.write_text("#!/bin/bash\nexec python -m kdam \"$@\"\n")
+    bin_path.write_text('#!/bin/bash\nexec python -m kdam "$@"\n')
 
     service_dir = tmp_path / "systemd_user"
     service_dir.mkdir()
@@ -52,7 +52,7 @@ def _fake_install(tmp_path: Path) -> dict:
     bashrc = tmp_path / ".bashrc"
     bashrc.write_text(
         "export PATH=$HOME/.local/bin:$PATH\n"
-        "eval \"$(_KDAM_COMPLETE=bash_source kdam)\"\n"
+        'eval "$(_KDAM_COMPLETE=bash_source kdam)"\n'
         "# kdam shell completion\n"
         "source ~/.kde-avatar-manager/completion.bash\n"
         "echo 'hello'\n"
@@ -87,6 +87,7 @@ def _make_runner_with_patches(tmp_path, monkeypatch, files=None):
     # Redirect the systemd service/timer file paths in both cli and _cli_shared
     # (cli imports them by name from _cli_shared, so both must be patched)
     import kdam._cli_shared as shared_mod
+
     monkeypatch.setattr(cli_mod, "_SERVICE_FILE", service_file)
     monkeypatch.setattr(cli_mod, "_TIMER_FILE", timer_file)
     monkeypatch.setattr(shared_mod, "_SERVICE_FILE", service_file)
@@ -94,7 +95,8 @@ def _make_runner_with_patches(tmp_path, monkeypatch, files=None):
 
     # Redirect Path.home() / .local / bin / kdam
     monkeypatch.setattr(
-        Path, "home",
+        Path,
+        "home",
         staticmethod(lambda: tmp_path / "home"),
     )
     (tmp_path / "home" / ".local" / "bin").mkdir(parents=True, exist_ok=True)
@@ -113,7 +115,7 @@ def _make_runner_with_patches(tmp_path, monkeypatch, files=None):
     bashrc = tmp_path / "home" / ".bashrc"
     bashrc.write_text(
         "export PATH=$HOME/.local/bin:$PATH\n"
-        "eval \"$(_KDAM_COMPLETE=bash_source kdam)\"\n"
+        'eval "$(_KDAM_COMPLETE=bash_source kdam)"\n'
         "# kdam shell completion\n"
         "echo 'hello'\n"
     )
@@ -128,8 +130,8 @@ def _make_runner_with_patches(tmp_path, monkeypatch, files=None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
-class TestUninstallCommand:
 
+class TestUninstallCommand:
     def test_uninstall_removes_binary(self, tmp_path, monkeypatch):
         """kdam uninstall -y must remove the kdam wrapper binary."""
         cli_mod, xdg_comp, bashrc, zshrc = _make_runner_with_patches(tmp_path, monkeypatch, {})
@@ -225,8 +227,9 @@ class TestUninstallCommand:
         result = runner.invoke(cli, ["uninstall", "-y", "--purge"])
         assert result.exit_code == 0, result.output
 
-        assert not tmp_path.exists() or not (tmp_path / "config.json").exists(), \
+        assert not tmp_path.exists() or not (tmp_path / "config.json").exists(), (
             "CONFIG_DIR content must be purged with --purge"
+        )
 
     def test_uninstall_confirmation_cancel(self, tmp_path, monkeypatch):
         """kdam uninstall without -y must prompt; answering 'n' must abort."""
@@ -256,29 +259,34 @@ class TestUninstallCommand:
 
 # ── EditorQuit typed sentinel tests ───────────────────────────────────────────
 
+
 class TestEditorQuitSentinel:
     """Verify EditorQuit is a proper typed singleton, not a bare object()."""
 
     def test_is_singleton(self):
         """EditorQuit() must always return the same instance."""
-        from kdam.editor import EditorQuit, EDITOR_QUIT
+        from kdam.editor import EDITOR_QUIT, EditorQuit
+
         assert EditorQuit() is EDITOR_QUIT
         assert EditorQuit() is EditorQuit()
 
     def test_identity_check_works(self):
         """result is EDITOR_QUIT must be True for the sentinel."""
         from kdam.editor import EDITOR_QUIT
+
         result = EDITOR_QUIT
         assert result is EDITOR_QUIT
 
     def test_repr(self):
         """EDITOR_QUIT repr must be 'EDITOR_QUIT' for readable test output."""
         from kdam.editor import EDITOR_QUIT
+
         assert repr(EDITOR_QUIT) == "EDITOR_QUIT"
 
     def test_is_typed(self):
         """EDITOR_QUIT must be an instance of EditorQuit, not bare object."""
         from kdam.editor import EDITOR_QUIT, EditorQuit
+
         assert isinstance(EDITOR_QUIT, EditorQuit)
         assert not isinstance(EDITOR_QUIT, str)
         assert not isinstance(EDITOR_QUIT, dict)
@@ -286,6 +294,7 @@ class TestEditorQuitSentinel:
     def test_open_crop_editor_return_annotation(self):
         """open_crop_editor return annotation must include EditorQuit."""
         import importlib.util
+
         # Read annotation from source to avoid Qt import issues
         spec = importlib.util.find_spec("kdam.editor")
         assert spec and spec.origin

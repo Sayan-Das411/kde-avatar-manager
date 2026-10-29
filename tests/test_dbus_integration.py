@@ -9,17 +9,16 @@ mocked D-Bus interface, verifying that:
 
 No real D-Bus connection is made — dbus itself is mocked at the module level.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
-from PIL import Image
-
 from helpers import _patch_paths
+from PIL import Image
 
 
 def _make_png(path: Path, size=(64, 64)) -> Path:
@@ -28,7 +27,8 @@ def _make_png(path: Path, size=(64, 64)) -> Path:
 
 
 def _make_config(tmp: Path):
-    from kdam.config import Config, RotationConfig, PanicConfig, State
+    from kdam.config import Config, PanicConfig, RotationConfig, State
+
     return Config(
         rotation=RotationConfig(mode="daily", order="random", interval_hours=24),
         panic=PanicConfig(),
@@ -39,14 +39,18 @@ def _make_config(tmp: Path):
 
 def _make_full_db(img_path: str):
     """Return a real ImageDB with one configured, enabled, cropped entry."""
-    from kdam.db import ImageDB, ImageEntry, CropInfo
+    from kdam.db import CropInfo, ImageDB, ImageEntry
+
     db = ImageDB()
-    db.set(img_path, ImageEntry(
-        configured=True,
-        enabled=True,
-        weight=1.0,
-        crop=CropInfo(x=0, y=0, size=64),
-    ))
+    db.set(
+        img_path,
+        ImageEntry(
+            configured=True,
+            enabled=True,
+            weight=1.0,
+            crop=CropInfo(x=0, y=0, size=64),
+        ),
+    )
     return db
 
 
@@ -68,6 +72,7 @@ class TestSetAvatar:
     def test_set_avatar_wraps_dbus_exception(self, tmp_path):
         """DBusException from SetIconFile must become RuntimeError, not leak raw dbus type."""
         import dbus
+
         import kdam.kde as kde_mod
 
         mock_iface = MagicMock()
@@ -99,7 +104,8 @@ class TestRotateDBusIntegration:
     def test_rotate_true_on_dbus_success(self, tmp_path, monkeypatch):
         """rotate() returns True and updates state when D-Bus call succeeds."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -117,8 +123,10 @@ class TestRotateDBusIntegration:
         """rotate() returns False and sends notification when D-Bus raises."""
         _patch_paths(tmp_path, monkeypatch)
         import dbus
-        from kdam import rotator, kde as kde_mod
+
         import kdam.notify as notify_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -138,8 +146,8 @@ class TestRotateDBusIntegration:
     def test_rotate_logs_path_on_success(self, tmp_path, monkeypatch):
         """On a successful rotation that changes the avatar, the path is written to the log."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
-        import kdam.config as cfg_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -159,7 +167,8 @@ class TestRotateDBusIntegration:
     def test_rotate_no_log_when_same_image(self, tmp_path, monkeypatch):
         """If the selected image is the same as last time, no log entry is written."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -177,7 +186,8 @@ class TestRotateDBusIntegration:
     def test_rotate_cleans_up_temp_file_on_success(self, tmp_path, monkeypatch):
         """The processed temp PNG must be deleted after a successful rotation."""
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -203,7 +213,9 @@ class TestRotateDBusIntegration:
         """The processed temp PNG must be deleted even when D-Bus fails."""
         _patch_paths(tmp_path, monkeypatch)
         import dbus
-        from kdam import rotator, kde as kde_mod
+
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         config = _make_config(tmp_path)
@@ -234,7 +246,8 @@ class TestApplySpecificDBusIntegration:
 
     def test_apply_specific_returns_true_on_success(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         db = _make_full_db(img_path)
@@ -250,7 +263,9 @@ class TestApplySpecificDBusIntegration:
     def test_apply_specific_returns_false_on_dbus_failure(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
         import dbus
-        from kdam import rotator, kde as kde_mod
+
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         db = _make_full_db(img_path)
@@ -265,7 +280,8 @@ class TestApplySpecificDBusIntegration:
 
     def test_apply_specific_updates_config_state(self, tmp_path, monkeypatch):
         _patch_paths(tmp_path, monkeypatch)
-        from kdam import rotator, kde as kde_mod
+        from kdam import kde as kde_mod
+        from kdam import rotator
 
         img_path = str(_make_png(tmp_path / "photo.png"))
         db = _make_full_db(img_path)

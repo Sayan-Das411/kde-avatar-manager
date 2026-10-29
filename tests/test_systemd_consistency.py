@@ -6,16 +6,14 @@ systemd/kde-avatar-rotate.timer without updating _write_systemd_files() (or vice
 versa), which would make 'kdam enable' install different unit files than what is
 committed to the repo.
 """
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
-
-import pytest
 
 # Project root is two levels up from this file (tests/ → kde-avatar-manager/)
 _PROJECT_ROOT = Path(__file__).parent.parent
-_SYSTEMD_DIR  = _PROJECT_ROOT / "systemd"
+_SYSTEMD_DIR = _PROJECT_ROOT / "systemd"
 
 
 def _strip_comments_and_blank(text: str) -> str:
@@ -70,15 +68,20 @@ class TestSystemdFilesConsistency:
     """The committed systemd/ unit files must match _write_systemd_files() output."""
 
     def test_service_file_exists(self):
-        assert (_SYSTEMD_DIR / "kde-avatar-rotate.service").exists(), \
+        assert (_SYSTEMD_DIR / "kde-avatar-rotate.service").exists(), (
             "systemd/kde-avatar-rotate.service is missing from the repository"
+        )
 
     def test_timer_file_exists(self):
-        assert (_SYSTEMD_DIR / "kde-avatar-rotate.timer").exists(), \
+        assert (_SYSTEMD_DIR / "kde-avatar-rotate.timer").exists(), (
             "systemd/kde-avatar-rotate.timer is missing from the repository"
+        )
 
     def test_service_has_graphical_session_target(self):
-        """After=graphical-session.target is required so notify-send works on login (notification daemon not yet ready at dbus.socket time)."""
+        """After=graphical-session.target is required so notify-send works on login.
+
+        (notification daemon not yet ready at dbus.socket time)
+        """
         content = (_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text()
         assert "After=graphical-session.target" in content, (
             "kde-avatar-rotate.service is missing 'After=graphical-session.target'.\n"
@@ -87,19 +90,13 @@ class TestSystemdFilesConsistency:
 
     def test_service_key_fields_match_generator(self):
         """Core fields of the committed .service must match _write_systemd_files() output."""
-        committed = _strip_comments_and_blank(
-            (_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text()
-        )
+        committed = _strip_comments_and_blank((_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text())
         generated = _strip_comments_and_blank(_get_generated_service())
 
         # Compare field by field so we aren't sensitive to ExecStart path differences
         # (committed uses %h/.local/bin/kdam; runtime uses the actual venv path)
-        committed_fields = dict(
-            line.split("=", 1) for line in committed.splitlines() if "=" in line
-        )
-        generated_fields = dict(
-            line.split("=", 1) for line in generated.splitlines() if "=" in line
-        )
+        committed_fields = dict(line.split("=", 1) for line in committed.splitlines() if "=" in line)
+        generated_fields = dict(line.split("=", 1) for line in generated.splitlines() if "=" in line)
 
         for key in ("Description", "Type"):
             assert committed_fields.get(key) == generated_fields.get(key), (
@@ -108,8 +105,7 @@ class TestSystemdFilesConsistency:
             )
 
         assert "ExecStart" in committed_fields, "ExecStart missing from committed service file"
-        assert "next --quiet" in committed_fields["ExecStart"], \
-            "ExecStart must end with 'next --quiet'"
+        assert "next --quiet" in committed_fields["ExecStart"], "ExecStart must end with 'next --quiet'"
 
     def test_timer_has_persistent(self):
         """Persistent=true ensures the timer fires after missed runs (e.g. laptop was off)."""
@@ -121,13 +117,15 @@ class TestSystemdFilesConsistency:
 
     def test_timer_has_wantedby_timers_target(self):
         content = (_SYSTEMD_DIR / "kde-avatar-rotate.timer").read_text()
-        assert "WantedBy=timers.target" in content, \
+        assert "WantedBy=timers.target" in content, (
             "kde-avatar-rotate.timer is missing 'WantedBy=timers.target' in [Install]"
+        )
 
     def test_service_type_is_oneshot(self):
         content = (_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text()
-        assert "Type=oneshot" in content, \
+        assert "Type=oneshot" in content, (
             "Service type must be oneshot (kdam next exits after a single rotation)"
+        )
 
 
 class TestWriteSystemdFilesFunction:
@@ -139,11 +137,13 @@ class TestWriteSystemdFilesFunction:
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         config = Config(
             rotation=RotationConfig(mode="daily", order="random", interval_hours=24),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
 
@@ -155,16 +155,18 @@ class TestWriteSystemdFilesFunction:
 
     def test_interval_timer_clock_aligned(self, tmp_path, monkeypatch):
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         # 6 hours starting at 0 -> 00, 06, 12, 18
         config = Config(
             rotation=RotationConfig(mode="interval", order="random", interval="6h", start_hour=0),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
 
@@ -174,16 +176,18 @@ class TestWriteSystemdFilesFunction:
 
     def test_interval_timer_complex_timespan(self, tmp_path, monkeypatch):
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         # Complex duration: 12d 13h 52m
         config = Config(
             rotation=RotationConfig(mode="interval", order="random", interval="12d 13h 52m"),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
 
@@ -194,15 +198,17 @@ class TestWriteSystemdFilesFunction:
 
     def test_times_mode_timer(self, tmp_path, monkeypatch):
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         config = Config(
             rotation=RotationConfig(mode="times", order="random", times=["08:30", "14:00", "21:15"]),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
 
@@ -213,16 +219,18 @@ class TestWriteSystemdFilesFunction:
 
     def test_weekly_and_monthly_timers(self, tmp_path, monkeypatch):
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         # Weekly on Sunday
         cfg_weekly = Config(
             rotation=RotationConfig(mode="weekly", order="random", weekday="sun"),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(cfg_weekly)
         timer_w = (tmp_path / "kdam-rotate.timer").read_text()
@@ -231,7 +239,9 @@ class TestWriteSystemdFilesFunction:
         # Monthly
         cfg_monthly = Config(
             rotation=RotationConfig(mode="monthly", order="random"),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(cfg_monthly)
         timer_m = (tmp_path / "kdam-rotate.timer").read_text()
@@ -239,15 +249,17 @@ class TestWriteSystemdFilesFunction:
 
     def test_service_contains_next_quiet(self, tmp_path, monkeypatch):
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         config = Config(
             rotation=RotationConfig(mode="daily", order="random", interval_hours=24),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
 
@@ -259,15 +271,17 @@ class TestWriteSystemdFilesFunction:
     def test_committed_service_matches_generator_key_fields(self, tmp_path, monkeypatch):
         """Cross-check: the committed file and the generator agree on all non-path fields."""
         import kdam._cli_shared as shared
-        from kdam.config import Config, RotationConfig, PanicConfig, State
+        from kdam.config import Config, PanicConfig, RotationConfig, State
 
         monkeypatch.setattr(shared, "SYSTEMD_USER_DIR", tmp_path)
         monkeypatch.setattr(shared, "_SERVICE_FILE", tmp_path / "kdam-rotate.service")
-        monkeypatch.setattr(shared, "_TIMER_FILE",   tmp_path / "kdam-rotate.timer")
+        monkeypatch.setattr(shared, "_TIMER_FILE", tmp_path / "kdam-rotate.timer")
 
         config = Config(
             rotation=RotationConfig(mode="daily", order="random", interval_hours=24),
-            panic=PanicConfig(), state=State(enabled=True), directories=[],
+            panic=PanicConfig(),
+            state=State(enabled=True),
+            directories=[],
         )
         shared._write_systemd_files(config)
         generated = (tmp_path / "kdam-rotate.service").read_text()

@@ -1,4 +1,5 @@
 """cli_backup.py — backup group and subcommands."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -51,10 +52,16 @@ def backup_cmd() -> None:
 
 @backup_cmd.command(name="create")
 @click.argument("output_path", required=False, default=None)
-@click.option("--include-images/--no-images", default=True,
-              help="Include original source image files in archive (default: yes).")
-@click.option("--config-only", is_flag=True,
-              help="Include only config.json (settings & schedule), omitting image registry.")
+@click.option(
+    "--include-images/--no-images",
+    default=True,
+    help="Include original source image files in archive (default: yes).",
+)
+@click.option(
+    "--config-only",
+    is_flag=True,
+    help="Include only config.json (settings & schedule), omitting image registry.",
+)
 def backup_create(output_path: str | None, include_images: bool, config_only: bool) -> None:
     """Create a portable backup archive (.tar.gz).
 
@@ -72,7 +79,9 @@ def backup_create(output_path: str | None, include_images: bool, config_only: bo
       kdam backup create --config-only           — settings only
     """
     try:
-        archive = backup_mod.create_backup(output_path, include_images=include_images, config_only=config_only)
+        archive = backup_mod.create_backup(
+            output_path, include_images=include_images, config_only=config_only
+        )
         sz_kb = archive.stat().st_size / 1024
         sz_str = f"{sz_kb / 1024:.2f} MB" if sz_kb >= 1024 else f"{sz_kb:.1f} KB"
         console.print(f"[green]✓ Backup created successfully:[/green] {archive} ({sz_str})")
@@ -155,7 +164,9 @@ def backup_restore(archive_path: Path, images_dir: str | None, force: bool) -> N
         ok, msg = backup_mod.restore_backup(archive_path, target_images_dir=images_dir)
         if ok:
             console.print(f"[green]✓ {msg}[/green]")
-            console.print("[dim]Run [bold]kdam status[/bold] or [bold]kdam list[/bold] to check restored state.[/dim]")
+            console.print(
+                "[dim]Run [bold]kdam status[/bold] or [bold]kdam list[/bold] to check restored state.[/dim]"
+            )
         else:
             console.print(f"[red]Restore failed: {msg}[/red]")
     except Exception as exc:

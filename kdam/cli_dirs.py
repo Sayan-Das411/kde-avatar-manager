@@ -1,4 +1,5 @@
 """cli_dirs.py — dirs group and subcommands."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -72,6 +73,7 @@ def dirs_list() -> None:
     'off' means it has been manually disabled with 'kdam dirs toggle'.
     """
     from rich.table import Table
+
     config = load_config()
     if not config.directories:
         console.print("[dim]No directories configured.[/dim]")
@@ -86,7 +88,8 @@ def dirs_list() -> None:
     for d in config.directories:
         exists = Path(d.path).expanduser().exists()
         icon = (
-            "[green]✓[/green]" if (d.enabled and exists)
+            "[green]✓[/green]"
+            if (d.enabled and exists)
             else ("[red]✗[/red]" if not exists else "[dim]off[/dim]")
         )
         path_str = d.path if exists else f"[red]{d.path}[/red] [dim](missing)[/dim]"
@@ -159,8 +162,7 @@ def dirs_remove(path: str) -> None:
     abs_path = str(Path(path).expanduser().resolve())
     before = len(config.directories)
     config.directories = [
-        d for d in config.directories
-        if str(Path(d.path).expanduser().resolve()) != abs_path
+        d for d in config.directories if str(Path(d.path).expanduser().resolve()) != abs_path
     ]
     if len(config.directories) < before:
         save_config(config)
@@ -197,8 +199,9 @@ def dirs_toggle(path: str) -> None:
 
 @dirs.command(name="edit")
 @click.argument("path", shell_complete=_complete_configured_dirs)
-@click.option("--recursive/--no-recursive", default=None,
-              help="Set or clear recursive scanning for this directory.")
+@click.option(
+    "--recursive/--no-recursive", default=None, help="Set or clear recursive scanning for this directory."
+)
 def dirs_edit(path: str, recursive: bool | None) -> None:
     """View or change directory scan settings.
 
@@ -271,7 +274,9 @@ def dirs_suspend(path: str) -> None:
     db.save()
     save_config(config)
     console.print(f"[yellow]Suspended:[/yellow] {abs_path}")
-    console.print(f"[dim]{paused} image(s) paused. Run [bold]kdam dirs resume {path}[/bold] to restore.[/dim]")
+    console.print(
+        f"[dim]{paused} image(s) paused. Run [bold]kdam dirs resume {path}[/bold] to restore.[/dim]"
+    )
 
 
 @dirs.command(name="resume")

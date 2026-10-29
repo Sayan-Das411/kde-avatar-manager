@@ -1,4 +1,5 @@
 """Avatar rotation logic — image processing and selection."""
+
 from __future__ import annotations
 
 import os
@@ -12,7 +13,6 @@ from PIL import Image
 from . import kde, notify
 from .config import (
     AVATAR_SIZE,
-    CONFIG_DIR,
     LOG_FILE,  # noqa: F401
     LOGS_DIR,  # noqa: F401
     PROCESSED_DIR,
@@ -29,6 +29,7 @@ from .db import CropInfo, ImageDB
 def _log(path: str) -> None:
     """Write a structured log entry — thin wrapper to avoid circular import."""
     from ._cli_shared import _write_log_entry
+
     _write_log_entry(path)
 
 
@@ -48,6 +49,7 @@ def _should_notify_error() -> bool:
     """Return True if enough time has passed since the last error notification."""
     global _last_error_notify_ts, _disk_ts_loaded
     from . import config as _cfg
+
     notify_file = _cfg.CONFIG_DIR / ".last_error_notify"
     if not _disk_ts_loaded and _last_error_notify_ts is None:
         _disk_ts_loaded = True
@@ -71,6 +73,7 @@ def _should_notify_error() -> bool:
 
 # ── Image processing ──────────────────────────────────────────────────────────
 
+
 def process_image(source_path: str | Path, crop: CropInfo) -> Path:
     """Crop + resize source image to a 256×256 PNG and return a temporary path.
 
@@ -90,7 +93,7 @@ def process_image(source_path: str | Path, crop: CropInfo) -> Path:
     size = max(1, min(crop.size, iw - x, ih - y))
 
     cropped = img.crop((x, y, x + size, y + size))
-    resized = cropped.resize((AVATAR_SIZE, AVATAR_SIZE), Image.LANCZOS)
+    resized = cropped.resize((AVATAR_SIZE, AVATAR_SIZE), Image.Resampling.LANCZOS)
 
     # Write to a temp file in PROCESSED_DIR so it is on the same filesystem
     # as other kdam data (avoids cross-device issues with KDE's D-Bus call).
@@ -102,6 +105,7 @@ def process_image(source_path: str | Path, crop: CropInfo) -> Path:
 
 
 # ── Selection ─────────────────────────────────────────────────────────────────
+
 
 def _get_lru_pool_size(n: int, config: Config) -> int:
     """Calculate the effective top-K LRU pool size.
@@ -140,8 +144,7 @@ def get_next_image(config: Config, db: ImageDB) -> str | None:
 
     # Exclude panic image from rotation pool
     candidates = sorted(
-        p for p in active_dict.keys()
-        if panic_path is None or str(Path(p).resolve()) != panic_path
+        p for p in active_dict.keys() if panic_path is None or str(Path(p).resolve()) != panic_path
     )
 
     if not candidates:
@@ -227,6 +230,7 @@ def get_next_image(config: Config, db: ImageDB) -> str | None:
 
 # ── Rotation ──────────────────────────────────────────────────────────────────
 
+
 def rotate(config: Config, db: ImageDB, quiet: bool = False) -> bool | None:
     """Perform one full rotation cycle:
 
@@ -258,7 +262,7 @@ def rotate(config: Config, db: ImageDB, quiet: bool = False) -> bool | None:
     processed: Path | None = None
     try:
         # Check whether the source image actually changed (for log/notification purposes only)
-        image_changed = (config.state.last_image_path != next_path)
+        image_changed = config.state.last_image_path != next_path
 
         # Process fresh every time — ~100ms, no persistent cache needed
         processed = process_image(next_path, entry.crop)

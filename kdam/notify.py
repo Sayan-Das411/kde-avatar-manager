@@ -1,4 +1,5 @@
 """Desktop notifications via notify-send.  All calls are fire-and-forget."""
+
 from __future__ import annotations
 
 import shutil
