@@ -1,0 +1,10 @@
+[Unit]
+Description=KDE Avatar Auto-Rotator Timer
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

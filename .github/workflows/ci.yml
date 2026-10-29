@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies (dbus, PyQt5 headless)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libdbus-1-dev \
+            python3-dbus \
+            python3-pyqt5 \
+            libpython3-dev \
+            xvfb
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        # xvfb-run makes Qt happy in headless CI (needed for editor tests)
+        run: xvfb-run -a python -m pytest tests/ -q --tb=short
+
+  typecheck:
+    name: mypy type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libdbus-1-dev python3-dbus python3-pyqt5 libpython3-dev
+
+      - name: Install package + typecheck dependencies
+        run: pip install -e ".[typecheck]"
+
+      - name: Run mypy
+        run: python -m mypy kdam/ --ignore-missing-imports
+
+  lint:
+    name: ruff lint + format
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        run: ruff check kdam/ tests/
+
+      - name: Format check
+        run: ruff format --check kdam/ tests/

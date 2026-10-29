@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kde-avatar-manager"
+dynamic = ["version"]
+description = "Auto-rotate KDE Plasma user avatars with a crop editor and systemd scheduling"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Sayan Das" }]
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "Pillow>=9.0",
+    "dbus-python",
+    "rich>=12.0",
+    "PyQt5>=5.15",
+]
+
+[project.urls]
+Repository = "https://github.com/Sayan-Das411/kde-avatar-manager"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "hypothesis>=6.0"]
+typecheck = ["mypy>=1.0", "types-Pillow"]
+
+[project.scripts]
+kdam = "kdam.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kdam*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "kdam.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 3
+
+[tool.mypy]
+python_version = "3.11"
+# Strict-ish, but allowing missing stubs for C extensions (dbus-python, PyQt5)
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unused_configs = true
+# Don't enforce strict on the CLI layer — it has too many click decorators
+[[tool.mypy.overrides]]
+module = "kdam.cli"
+warn_return_any = false
+[[tool.mypy.overrides]]
+module = "kdam.cli_panic"
+warn_return_any = false
+[[tool.mypy.overrides]]
+module = "kdam.cli_dirs"
+warn_return_any = false
+[[tool.mypy.overrides]]
+module = "kdam.cli_config"
+warn_return_any = false
+[[tool.mypy.overrides]]
+module = "kdam.cli_backup"
+warn_return_any = false
+[[tool.mypy.overrides]]
+# PyQt5 stubs are incomplete — Qt.NoBrush, Qt.LeftButton, Qt.AlignCenter etc.
+# all exist at runtime but are not enumerated in PyQt5-stubs.
+# Suppress all mypy errors for the editor module (only Qt attr-defined errors exist here).
+module = "kdam.editor"
+ignore_errors = true
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
