@@ -41,7 +41,11 @@ jobs:
           pip install -e . --no-deps
 
       - name: Run tests
-        # xvfb-run makes Qt happy in headless CI (needed for editor tests)
+        # xvfb-run makes Qt happy in headless CI (needed for editor tests).
+        # PYTHONPATH includes system site-packages so that dbus and PyQt5,
+        # installed via apt, are visible to the setup-python managed interpreter.
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
         run: xvfb-run -a python -m pytest tests/ -q --tb=short
 
   typecheck:
@@ -68,6 +72,8 @@ jobs:
           pip install -e . --no-deps
 
       - name: Run mypy
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
         run: python -m mypy kdam/ --ignore-missing-imports
 
   lint:
