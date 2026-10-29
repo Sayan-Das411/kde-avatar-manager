@@ -23,7 +23,7 @@ Repository = "https://github.com/Sayan-Das411/kde-avatar-manager"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "hypothesis>=6.0"]
-typecheck = ["mypy>=1.0", "types-Pillow"]
+typecheck = ["mypy>=1.0"]
 
 [project.scripts]
 kdam = "kdam.cli:cli"

@@ -28,13 +28,17 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libdbus-1-dev \
+            libglib2.0-dev \
             python3-dbus \
             python3-pyqt5 \
             libpython3-dev \
             xvfb
 
       - name: Install package + dev dependencies
-        run: pip install -e ".[dev]"
+        # dbus-python and PyQt5 come from system apt; install everything else via pip.
+        run: |
+          pip install click "Pillow>=9.0" "rich>=12.0" "pytest>=7.0" "hypothesis>=6.0"
+          pip install -e . --no-deps
 
       - name: Run tests
         # xvfb-run makes Qt happy in headless CI (needed for editor tests)
@@ -56,10 +60,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            libdbus-1-dev python3-dbus python3-pyqt5 libpython3-dev
+            libdbus-1-dev libglib2.0-dev python3-dbus python3-pyqt5 libpython3-dev
 
       - name: Install package + typecheck dependencies
-        run: pip install -e ".[typecheck]"
+        run: |
+          pip install click "Pillow>=9.0" "rich>=12.0" "mypy>=1.0"
+          pip install -e . --no-deps
 
       - name: Run mypy
         run: python -m mypy kdam/ --ignore-missing-imports
