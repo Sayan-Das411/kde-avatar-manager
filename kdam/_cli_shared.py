@@ -152,16 +152,16 @@ def _write_systemd_files(config: Config) -> None:
     _SERVICE_FILE.write_text(
         "[Unit]\n"
         "Description=KDE Avatar Auto-Rotator\n"
-        "# Wait for graphical session so the notification daemon is ready.\n"
-        "# Without this, notify-send fires into the void when triggered on\n"
-        "# login after a missed midnight timer (PC was powered off at midnight).\n"
-        "After=graphical-session.target\n"
-        "Wants=graphical-session.target\n"
+        "# Wait for plasmashell's D-Bus name to be acquired before firing.\n"
+        "# plasma-plasmashell.service is Type=dbus, so systemd marks it\n"
+        "# 'started' only once it owns its bus name — which is exactly when\n"
+        "# the notification daemon is live.  This replaces the old dumb\n"
+        "# 'sleep 5' that caused visible latency on fresh logins.\n"
+        "After=plasma-plasmashell.service\n"
+        "Wants=plasma-plasmashell.service\n"
         "\n"
         "[Service]\n"
         "Type=oneshot\n"
-        "# Brief delay lets knotificationd/plasmashell settle on fresh login.\n"
-        "ExecStartPre=/bin/sleep 5\n"
         f"ExecStart={_kdam_bin()} next --quiet\n"
     )
 

@@ -32,12 +32,11 @@ def _get_generated_service(kdam_bin: str = "%h/.local/bin/kdam") -> str:
     return (
         "[Unit]\n"
         "Description=KDE Avatar Auto-Rotator\n"
-        "After=graphical-session.target\n"
-        "Wants=graphical-session.target\n"
+        "After=plasma-plasmashell.service\n"
+        "Wants=plasma-plasmashell.service\n"
         "\n"
         "[Service]\n"
         "Type=oneshot\n"
-        "ExecStartPre=/bin/sleep 5\n"
         f"ExecStart={kdam_bin} next --quiet\n"
     )
 
@@ -78,14 +77,17 @@ class TestSystemdFilesConsistency:
         )
 
     def test_service_has_graphical_session_target(self):
-        """After=graphical-session.target is required so notify-send works on login.
+        """After=plasma-plasmashell.service is required so notify-send works on login.
 
-        (notification daemon not yet ready at dbus.socket time)
+        plasma-plasmashell.service is Type=dbus, so systemd marks it 'started' only
+        once plasmashell has acquired its D-Bus name — exactly when the notification
+        daemon is live.  This replaces the old 'After=graphical-session.target +
+        sleep 5' heuristic that caused visible latency on fresh logins.
         """
         content = (_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text()
-        assert "After=graphical-session.target" in content, (
-            "kde-avatar-rotate.service is missing 'After=graphical-session.target'.\n"
-            "This means the service may start before D-Bus is available."
+        assert "After=plasma-plasmashell.service" in content, (
+            "kde-avatar-rotate.service is missing 'After=plasma-plasmashell.service'.\n"
+            "This means the service may start before the notification daemon is ready."
         )
 
     def test_service_key_fields_match_generator(self):
@@ -265,7 +267,7 @@ class TestWriteSystemdFilesFunction:
 
         service = (tmp_path / "kdam-rotate.service").read_text()
         assert "next --quiet" in service
-        assert "After=graphical-session.target" in service
+        assert "After=plasma-plasmashell.service" in service
         assert "Type=oneshot" in service
 
     def test_committed_service_matches_generator_key_fields(self, tmp_path, monkeypatch):
@@ -288,7 +290,7 @@ class TestWriteSystemdFilesFunction:
 
         committed = (_SYSTEMD_DIR / "kde-avatar-rotate.service").read_text()
 
-        fields = ("Description=KDE Avatar Auto-Rotator", "Type=oneshot", "After=graphical-session.target")
+        fields = ("Description=KDE Avatar Auto-Rotator", "Type=oneshot", "After=plasma-plasmashell.service")
         for field in fields:
             assert field in generated, f"Generated service missing: {field!r}"
             assert field in committed, f"Committed service missing: {field!r} — update systemd/ to match"
